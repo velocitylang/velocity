@@ -1,9 +1,11 @@
 use std::fs;
 use std::iter::Peekable;
 use std::str::Chars;
-use crate::grammar::Token;
+use crate::grammar::{Expr, Token};
+use crate::parser::Parser;
 
 pub mod grammar;
+pub mod parser;
 
 fn get_next_token(chars: &mut Peekable<Chars>) -> Option<Token> {
     loop {
@@ -18,6 +20,7 @@ fn get_next_token(chars: &mut Peekable<Chars>) -> Option<Token> {
     let char = chars.next();
     match char {
         Some('+') => Some(Token::Plus),
+        Some('*') => Some(Token::Star),
         Some(c) if c.is_digit(10) => {
             let mut num_str = String::from(c);
 
@@ -39,6 +42,14 @@ fn get_next_token(chars: &mut Peekable<Chars>) -> Option<Token> {
     }
 }
 
+fn eval(expr: &Expr) -> f64 {
+    match expr {
+        Expr::Number(n) => *n,
+        Expr::Add(left, right) => eval(left) + eval(right),
+        Expr::Mul(left, right) => eval(left) * eval(right),
+    }
+}
+
 fn main() {
     let source_result = fs::read_to_string("./main.vl");
 
@@ -53,6 +64,17 @@ fn main() {
         }
 
         println!("Found tokens: {:?}", tokens);
+
+        let mut parser = Parser { tokens, pos: 0 };
+
+        let ast: Expr = parser.parse_expr();
+
+        println!("AST is: {:?}", ast);
+
+        let result = eval(&ast);
+
+        println!("Result: {:?}", result);
+
     } else {
         println!("Error reading source file");
     }
