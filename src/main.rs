@@ -20,7 +20,9 @@ fn get_next_token(chars: &mut Peekable<Chars>) -> Option<Token> {
     let char = chars.next();
     match char {
         Some('+') => Some(Token::Plus),
+        Some('-') => Some(Token::Minus),
         Some('*') => Some(Token::Star),
+        Some('/') => Some(Token::Slash),
         Some(c) if c.is_digit(10) => {
             let mut num_str = String::from(c);
 
@@ -46,7 +48,9 @@ fn eval(expr: &Expr) -> f64 {
     match expr {
         Expr::Number(n) => *n,
         Expr::Add(left, right) => eval(left) + eval(right),
+        Expr::Sub(left, right) => eval(left) - eval(right),
         Expr::Mul(left, right) => eval(left) * eval(right),
+        Expr::Div(left, right) => eval(left) / eval(right),
     }
 }
 
@@ -67,13 +71,15 @@ fn main() {
 
         let mut parser = Parser { tokens, pos: 0 };
 
-        let ast: Expr = parser.parse_expr();
+        while parser.peek().is_some() {
+            let ast: Expr = parser.parse_expr();
 
-        println!("AST is: {:?}", ast);
+            println!("AST is: {:?}", ast);
 
-        let result = eval(&ast);
+            let result = eval(&ast);
 
-        println!("Result: {:?}", result);
+            println!("Result: {:?}", result);
+        }
 
     } else {
         println!("Error reading source file");
