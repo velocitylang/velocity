@@ -5,11 +5,18 @@ pub enum Expr {
   Sub(Box<Expr>, Box<Expr>),
   Mul(Box<Expr>, Box<Expr>),
   Div(Box<Expr>, Box<Expr>),
+  Var(String),
+  Assign(String, Box<Expr>),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Token {
+  Ident(String),
+  Let,
+  Make,
+  Assign,
   Number(f64),
+  Equals,
   Plus,
   Minus,
   Star,
