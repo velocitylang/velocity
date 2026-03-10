@@ -1,116 +1,115 @@
 use crate::grammar::{Expr, Token};
 
 pub struct Parser {
-  pub tokens: Vec<Token>,
-  pub pos: usize,
+    pub tokens: Vec<Token>,
+    pub pos: usize,
 }
 
 impl Parser {
-  pub fn peek(&self) -> Option<&Token> {
-    self.tokens.get(self.pos)
-  }
-
-  fn consume(&mut self) -> Option<&Token> {
-    let token = self.tokens.get(self.pos);
-    if token.is_some() {
-      self.pos += 1;
+    pub fn peek(&self) -> Option<&Token> {
+        self.tokens.get(self.pos)
     }
-    token
-  }
 
-  pub fn parse_assignment(&mut self) -> Expr {
-    if matches!(self.peek(), Some(Token::Let)) {
-      self.consume();
-
-      if let Some(Token::Ident(name)) = self.consume() {
-        let name = name.clone();
-
-        if matches!(self.peek(), Some(Token::Assign)) {
-          self.consume();
-          let right = self.parse_assignment();
-          return Expr::LetDecl(name, Box::new(right));
+    fn consume(&mut self) -> Option<&Token> {
+        let token = self.tokens.get(self.pos);
+        if token.is_some() {
+            self.pos += 1;
         }
-      }
+        token
     }
 
-    if matches!(self.peek(), Some(Token::Make)) {
-      self.consume();
+    pub fn parse_assignment(&mut self) -> Expr {
+        if matches!(self.peek(), Some(Token::Let)) {
+            self.consume();
 
-      if let Some(Token::Ident(name)) = self.consume() {
-        let name = name.clone();
+            if let Some(Token::Ident(name)) = self.consume() {
+                let name = name.clone();
 
-        if matches!(self.peek(), Some(Token::Assign)) {
-          self.consume();
-          let right = self.parse_assignment();
-          return Expr::MakeDecl(name, Box::new(right));
+                if matches!(self.peek(), Some(Token::Assign)) {
+                    self.consume();
+                    let right = self.parse_assignment();
+                    return Expr::LetDecl(name, Box::new(right));
+                }
+            }
         }
-      }
+
+        if matches!(self.peek(), Some(Token::Make)) {
+            self.consume();
+
+            if let Some(Token::Ident(name)) = self.consume() {
+                let name = name.clone();
+
+                if matches!(self.peek(), Some(Token::Assign)) {
+                    self.consume();
+                    let right = self.parse_assignment();
+                    return Expr::MakeDecl(name, Box::new(right));
+                }
+            }
+        }
+
+        if let Some(Token::Ident(name)) = self.peek() {
+            let name = name.clone();
+
+            if matches!(self.tokens.get(self.pos + 1), Some(Token::Assign)) {
+                self.consume(); // ident
+                self.consume(); // =
+                let right = self.parse_assignment();
+                return Expr::Reassign(name, Box::new(right));
+            }
+        }
+
+        self.parse_expr()
     }
 
-    if let Some(Token::Ident(name)) = self.peek() {
-      let name = name.clone();
+    fn parse_expr(&mut self) -> Expr {
+        let mut left = self.parse_term();
 
-      if matches!(self.tokens.get(self.pos + 1), Some(Token::Assign)) {
-        self.consume(); // ident
-        self.consume(); // =
-        let right = self.parse_assignment();
-        return Expr::Reassign(name, Box::new(right));
-      }
+        while let Some(token) = self.peek() {
+            match token {
+                Token::Plus => {
+                    self.consume();
+                    let right = self.parse_term();
+                    left = Expr::Add(Box::new(left), Box::new(right));
+                },
+                Token::Minus => {
+                    self.consume();
+                    let right = self.parse_term();
+                    left = Expr::Sub(Box::new(left), Box::new(right));
+                },
+                _ => break,
+            }
+        }
+        left
     }
 
-    self.parse_expr()
-  }
+    fn parse_term(&mut self) -> Expr {
+        let mut left = self.parse_primary();
 
-  fn parse_expr(&mut self) -> Expr {
-    let mut left = self.parse_term();
-
-    while let Some(token) = self.peek() {
-      match token {
-        Token::Plus => {
-          self.consume();
-          let right = self.parse_term();
-          left = Expr::Add(Box::new(left), Box::new(right));
-        },
-        Token::Minus => {
-          self.consume();
-          let right = self.parse_term();
-          left = Expr::Sub(Box::new(left), Box::new(right));
-        },
-        _ => break,
-      }
+        while let Some(token) = self.peek() {
+            match token {
+                Token::Star => {
+                    self.consume();
+                    let right = self.parse_primary();
+                    left = Expr::Mul(Box::new(left), Box::new(right));
+                },
+                Token::Slash => {
+                    self.consume();
+                    let right = self.parse_primary();
+                    left = Expr::Div(Box::new(left), Box::new(right));
+                },
+                _ => break,
+            }
+        }
+        left
     }
-    left
-  }
 
-  fn parse_term(&mut self) -> Expr {
-    let mut left = self.parse_primary();
-
-    while let Some(token) = self.peek() {
-      match token {
-        Token::Star => {
-          self.consume();
-          let right = self.parse_primary();
-          left = Expr::Mul(Box::new(left), Box::new(right));
-        },
-        Token::Slash => {
-          self.consume();
-          let right = self.parse_primary();
-          left = Expr::Div(Box::new(left), Box::new(right));
-        },
-        _ => break,
-      }
-      
+    fn parse_primary(&mut self) -> Expr {
+        match self.consume() {
+            Some(Token::Number(n)) => Expr::Number(*n),
+            Some(Token::String(s)) => Expr::String(s.clone()),
+            Some(Token::Bool(b)) => Expr::Bool(*b),
+            Some(Token::Ident(name)) => Expr::Var(name.clone()),
+            _ => panic!("Expected a number, but found something else"),
+        }
     }
-    left
-  }
-
-  fn parse_primary(&mut self) -> Expr {
-    match self.consume() {
-      Some(Token::Number(n)) => Expr::Number(*n),
-      Some(Token::String(s)) => Expr::String(s.clone()),
-      Some(Token::Bool(b)) => Expr::Bool(*b),
-      Some(Token::Ident(name)) => Expr::Var(name.clone()),
-      _ => panic!("Expected a number, but found something else"),
-    }
-  }
 }
