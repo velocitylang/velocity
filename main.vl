@@ -7,3 +7,10 @@ let x = 10
 make y = 5
 
 x = 1
+
+let name = "Jason"
+name = "Makenzie"
+
+make string = "Done"
+make t_bool = true
+make f_bool = false

@@ -107,6 +107,9 @@ impl Parser {
   fn parse_primary(&mut self) -> Expr {
     match self.consume() {
       Some(Token::Number(n)) => Expr::Number(*n),
+      Some(Token::String(s)) => Expr::String(s.clone()),
+      Some(Token::Bool(b)) => Expr::Bool(*b),
+      Some(Token::Ident(name)) => Expr::Var(name.clone()),
       _ => panic!("Expected a number, but found something else"),
     }
   }

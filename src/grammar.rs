@@ -1,6 +1,8 @@
 #[derive(Debug, PartialEq, Clone)]
 pub enum Expr {
   Number(f64),
+  String(String),
+  Bool(bool),
   Add(Box<Expr>, Box<Expr>),
   Sub(Box<Expr>, Box<Expr>),
   Mul(Box<Expr>, Box<Expr>),
@@ -12,12 +14,21 @@ pub enum Expr {
 }
 
 #[derive(Debug, PartialEq, Clone)]
+pub enum Value {
+  Number(f64),
+  String(String),
+  Bool(bool),
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub enum Token {
   Ident(String),
   Let,
   Make,
   Assign,
   Number(f64),
+  String(String),
+  Bool(bool),
   Equals,
   Plus,
   Minus,
