@@ -5,3 +5,5 @@
 
 let x = 10
 make y = 5
+
+x = 1

@@ -8,8 +8,13 @@ use crate::parser::Parser;
 pub mod grammar;
 pub mod parser;
 
+pub struct Binding {
+    pub value: f64,
+    pub mutable: bool,
+}
+
 struct Env { 
-    idents: HashMap<String, f64>,
+    idents: HashMap<String, Binding>,
 }
 
 fn get_next_token(chars: &mut Peekable<Chars>) -> Option<Token> {
@@ -79,15 +84,42 @@ fn eval(expr: &Expr, env: &mut Env) -> f64 {
         Expr::Var(ident) => {
             let value = env.idents.get(ident);
             match value {
-                Some(v) => return *v,
-                _ => panic!("Identifier not found")
+                Some(b) => return b.value,
+                _ => panic!("Identifier {ident} not found")
             }
         },
-        Expr::Assign(ident, expr) => {
+        Expr::LetDecl(ident, expr) => {
+            if let Some(_) = env.idents.get(ident) {
+                panic!("Cannot redeclare existing identifier {ident}");
+            }
+
             let value = eval(expr, env);
-            env.idents.insert(String::from(ident), value);
+            env.idents.insert(String::from(ident), Binding { value, mutable: true });
             value
-        }
+        },
+        Expr::MakeDecl(ident, expr) => {
+            if let Some(_) = env.idents.get(ident) {
+                panic!("Cannot redeclare existing identifier {ident}");
+            }
+
+            let value = eval(expr, env);
+            env.idents.insert(String::from(ident), Binding { value, mutable: false });
+            value
+        },
+        Expr::Reassign(ident, expr) => {
+            let value = eval(expr, env);
+
+            match env.idents.get_mut(ident) {
+                Some(b) => {
+                    if !b.mutable {
+                        panic!("Cannot reassign immutable identifier {ident}")
+                    }
+                    b.value = value;
+                    value
+                },
+                None => panic!("Cannot reassign undefined identifier {ident}")
+            }
+        },
     }
 }
 
@@ -107,13 +139,16 @@ fn main() {
         println!("Found tokens: {:?}", tokens);
 
         let mut parser = Parser { tokens, pos: 0 };
+        let mut env = Env {
+            idents: HashMap::new()
+        };
 
         while parser.peek().is_some() {
             let ast: Expr = parser.parse_assignment();
 
             println!("AST is: {:?}", ast);
 
-            let result = eval(&ast, &mut Env { idents: HashMap::new() });
+            let result = eval(&ast, &mut env);
 
             println!("Result: {:?}", result);
         }

@@ -19,7 +19,7 @@ impl Parser {
   }
 
   pub fn parse_assignment(&mut self) -> Expr {
-    if matches!(self.peek(), Some(Token::Let) | Some(Token::Make)) {
+    if matches!(self.peek(), Some(Token::Let)) {
       self.consume();
 
       if let Some(Token::Ident(name)) = self.consume() {
@@ -28,8 +28,33 @@ impl Parser {
         if matches!(self.peek(), Some(Token::Assign)) {
           self.consume();
           let right = self.parse_assignment();
-          return Expr::Assign(name, Box::new(right));
+          return Expr::LetDecl(name, Box::new(right));
         }
+      }
+    }
+
+    if matches!(self.peek(), Some(Token::Make)) {
+      self.consume();
+
+      if let Some(Token::Ident(name)) = self.consume() {
+        let name = name.clone();
+
+        if matches!(self.peek(), Some(Token::Assign)) {
+          self.consume();
+          let right = self.parse_assignment();
+          return Expr::MakeDecl(name, Box::new(right));
+        }
+      }
+    }
+
+    if let Some(Token::Ident(name)) = self.peek() {
+      let name = name.clone();
+
+      if matches!(self.tokens.get(self.pos + 1), Some(Token::Assign)) {
+        self.consume(); // ident
+        self.consume(); // =
+        let right = self.parse_assignment();
+        return Expr::Reassign(name, Box::new(right));
       }
     }
 
@@ -82,7 +107,7 @@ impl Parser {
   fn parse_primary(&mut self) -> Expr {
     match self.consume() {
       Some(Token::Number(n)) => Expr::Number(*n),
-      _ => panic!("Expected a number, but found something else!"),
+      _ => panic!("Expected a number, but found something else"),
     }
   }
 }

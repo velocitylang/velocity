@@ -6,7 +6,9 @@ pub enum Expr {
   Mul(Box<Expr>, Box<Expr>),
   Div(Box<Expr>, Box<Expr>),
   Var(String),
-  Assign(String, Box<Expr>),
+  LetDecl(String, Box<Expr>),
+  MakeDecl(String, Box<Expr>),
+  Reassign(String, Box<Expr>),
 }
 
 #[derive(Debug, PartialEq, Clone)]
