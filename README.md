@@ -10,20 +10,22 @@ I enjoy doing things differently than others, so you're going to see that here. 
 
 If you're interested in coming along for the ride, and you know Rust and/or the innerworkings of AI and ML, hit me up on X @j4w8n or Bluesky @j4w8n.com
 
-Right now, I'm off to see if I can get a simple lexer, AST, and compiler working - all without AI. That doesn't mean nothing in this project will use AI - it very well could - but not yet, not yet.
+Right now, I'm off to see if I can get a simple lexer, AST, and compiler working - all only minor help from AI.
 
 ## Intro
 
 Velocity files have a `.vl` extension. Since we're starting out with a VM-based system, the bytecode files will be `.vlb`.
 
-## Syntax
+## Identifiers
+
+You can assign numbers, strings, and booleans to identifiers.
 
 - `let`: define a mutable value. e.g. `let x = 0`
 - `make`: define an immutable value. e.g. `make base = 10`
 
 ## Math
 
-You can add, subtract, multiply, and divide integers (default to `f64`).
+You can add, subtract, multiply, and divide numbers.
 
 ## CLI Tool
 
