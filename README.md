@@ -21,6 +21,10 @@ Velocity files have a `.vl` extension. Since we're starting out with a VM-based 
 - `let`: define a mutable (rebindable?) value. e.g. `let x = 0`
 - `make`: define an immutable value. e.g. `make base = 10`
 
+## Math
+
+You can add, subtract, multiply, and divide integers (default to `f64`).
+
 ## CLI Tool
 
 This will be called `velo`. Any compiler that we may build will be called `veloc`.
