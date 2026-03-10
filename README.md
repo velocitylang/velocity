@@ -10,7 +10,7 @@ I enjoy doing things differently than others, so you're going to see that here. 
 
 If you're interested in coming along for the ride, and you know Rust and/or the innerworkings of AI and ML, hit me up on X @j4w8n or Bluesky @j4w8n.com
 
-Right now, I'm off to see if I can get a simple lexer, AST, and compiler working - all only minor help from AI.
+Right now, I'm off to see if I can get a simple lexer, AST, and compiler working - with only minor help from AI.
 
 ## Intro
 
