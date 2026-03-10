@@ -18,7 +18,7 @@ Velocity files have a `.vl` extension. Since we're starting out with a VM-based 
 
 ## Syntax
 
-- `let`: define a mutable (rebindable?) value. e.g. `let x = 0`
+- `let`: define a mutable value. e.g. `let x = 0`
 - `make`: define an immutable value. e.g. `make base = 10`
 
 ## Math
