@@ -14,7 +14,9 @@ Right now, I'm off to see if I can get a simple lexer, AST, and compiler working
 
 ## Intro
 
-Velocity files have a `.vl` extension. Since we're starting out with a VM-based system, the bytecode files will be `.vlb`.
+Velocity files have a `.vl` extension.
+
+We're in extremely early development, and the Velocity language is not usable. You're welcome to clone the repo, tweak the `main.vl` file, and execute `cargo run` to see some internals.
 
 ## Identifiers
 
