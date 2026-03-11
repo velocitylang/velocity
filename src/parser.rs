@@ -18,7 +18,16 @@ impl Parser {
         token
     }
 
-    pub fn parse_assignment(&mut self) -> Expr {
+    pub fn parse_statement(&mut self) -> Expr {
+        let token = self.peek();
+
+        match token {
+            Some(Token::Print) => self.parse_print(),
+            _ => self.parse_assignment(),
+        }
+    }
+
+    fn parse_assignment(&mut self) -> Expr {
         if matches!(self.peek(), Some(Token::Let)) {
             self.consume();
 
@@ -111,5 +120,13 @@ impl Parser {
             Some(Token::Ident(name)) => Expr::Var(name.clone()),
             _ => panic!("Expected a number, but found something else"),
         }
+    }
+
+    fn parse_print(&mut self) -> Expr {
+        self.consume(); // print
+        self.consume(); // (
+        let expr = self.parse_expr();
+        self.consume(); // )
+        expr
     }
 }

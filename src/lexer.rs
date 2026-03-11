@@ -19,6 +19,8 @@ pub fn get_next_token(chars: &mut Peekable<Chars>) -> Option<Token> {
         Some('*') => Some(Token::Star),
         Some('/') => Some(Token::Slash),
         Some('=') => Some(Token::Assign),
+        Some('(') => Some(Token::LParen),
+        Some(')') => Some(Token::RParen),
         Some('"') => {
             let mut value = String::new();
             while let Some(next_char) = chars.next() {
@@ -59,6 +61,7 @@ pub fn get_next_token(chars: &mut Peekable<Chars>) -> Option<Token> {
             keywords.insert("make", Token::Make);
             keywords.insert("true", Token::Bool(true));
             keywords.insert("false", Token::Bool(false));
+            keywords.insert("print", Token::Print);
 
             match keywords.get(s.as_str()) {
                 Some(token) => Some(token.clone()),

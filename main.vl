@@ -1,8 +1,4 @@
-1 + 1 * 2 * 3
-15 - 12 / 2 / 2
-0 + 6 / 3
-15 - 3 * 4
-
+print("Welcome to Velocity")
 let x = 10
 make y = 5
 
@@ -14,3 +10,9 @@ name = "Makenzie"
 make string = "Done"
 make t_bool = true
 make f_bool = false
+
+make total = x + y
+make derived = x + 300
+
+print(total)
+print("Done!")

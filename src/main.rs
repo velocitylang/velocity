@@ -84,6 +84,11 @@ fn eval(expr: &Expr, env: &mut Env) -> Value {
             env.idents.insert(String::from(ident), Binding { value: value.clone(), mutable: false });
             value
         },
+        Expr::Print(expr) => {
+            let value = eval(expr, env);
+            eprintln!("{:?}", value);
+            value
+        },
         Expr::Reassign(ident, expr) => {
             let value = eval(expr, env);
 
@@ -122,7 +127,7 @@ fn main() {
         };
 
         while parser.peek().is_some() {
-            let ast: Expr = parser.parse_assignment();
+            let ast: Expr = parser.parse_statement();
 
             println!("AST is: {:?}", ast);
 
@@ -130,7 +135,6 @@ fn main() {
 
             println!("Result: {:?}", result);
         }
-
     } else {
         println!("Error reading source file");
     }

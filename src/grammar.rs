@@ -10,6 +10,7 @@ pub enum Expr {
     Var(String),
     LetDecl(String, Box<Expr>),
     MakeDecl(String, Box<Expr>),
+    Print(Box<Expr>),
     Reassign(String, Box<Expr>),
 }
 
@@ -30,8 +31,11 @@ pub enum Token {
     String(String),
     Bool(bool),
     Equals,
-    Plus,
+    LParen,
     Minus,
+    Plus,
+    Print,
+    RParen,
     Star,
     Slash,
 }
