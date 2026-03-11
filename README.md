@@ -27,6 +27,13 @@ You can assign numbers, strings, and booleans to identifiers.
 
 You can add, subtract, multiply, and divide numbers.
 
+## Printing to the console
+
+You can print values or expressions.
+
+- `print("Hello Velocity!")`
+- `print(x + 3)`
+
 ## CLI Tool
 
 This will be called `velo`. Any compiler that we may build will be called `veloc`.
