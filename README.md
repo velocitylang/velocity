@@ -36,6 +36,20 @@ You can print values or expressions.
 - `print("Hello Velocity!")`
 - `print(x + 3)`
 
+## Types
+
+Supported types are:
+- i8, i16, i32, i64
+- u8, u16, u32, u64
+- f32, f64
+- string
+- bool
+
+Type declaration is not required; we infer the type when needed.
+```vl
+let x: i8 = 3
+```
+
 ## CLI Tool
 
 This will be called `velo`. Any compiler that we may build will be called `veloc`.
