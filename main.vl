@@ -2,7 +2,7 @@ print("Welcome to Velocity")
 let x: i32 = 1
 make y: i32 = 5
 
-x = 1
+x = -1
 
 let name: string = "Jason"
 name = "Makenzie"

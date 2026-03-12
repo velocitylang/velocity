@@ -132,12 +132,17 @@ impl Parser {
     }
 
     fn parse_primary(&mut self) -> Expr {
-        match self.consume() {
+        let token = self.consume();
+        match token {
+            Some(Token::Minus) => {
+                let expr = self.parse_primary();
+                Expr::Negate(Box::new(expr))
+            }
             Some(Token::NumberLiteral(n)) => Expr::NumberLiteral(n.clone()),
             Some(Token::String(s)) => Expr::String(s.clone()),
             Some(Token::Bool(b)) => Expr::Bool(*b),
             Some(Token::Ident(name)) => Expr::Var(name.clone()),
-            _ => panic!("Expected a number, but found something else"),
+            _ => panic!("Expected a number, but found {:?}", token),
         }
     }
 

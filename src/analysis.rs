@@ -2,6 +2,17 @@ use crate::grammar::{Expr, TypeBinding, TypeEnv, TypeKind};
 
 fn infer_type(expr: &Expr, env: &TypeEnv, expected: Option<&TypeKind>) -> TypeKind {
     match expr {
+        Expr::Negate(inner) => {
+            let ty = infer_type(inner, env, expected);
+
+            match ty {
+                TypeKind::I8 | TypeKind::I16 | TypeKind::I32 | TypeKind::I64 |
+                TypeKind::F32 | TypeKind::F64 => ty,
+                TypeKind::U8 | TypeKind::U16 | TypeKind::U32 | TypeKind::U64 =>
+                    panic!("Cannot negate unsigned type {:?}", ty),
+                _ => panic!("Cannot negate {:?}", ty),
+            }
+        },
         Expr::String(_) => TypeKind::String,
         Expr::Bool(_) => TypeKind::Bool,
         Expr::NumberLiteral(n) => {

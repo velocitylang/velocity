@@ -11,6 +11,7 @@ pub struct TypeBinding {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Expr {
+    Negate(Box<Expr>),
     Number(NumericKind),
     NumberLiteral(String),
     String(String),
