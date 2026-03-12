@@ -1,4 +1,4 @@
-use crate::grammar::{Expr, Token};
+use crate::grammar::{Expr, Token, TypeKind};
 
 pub struct Parser {
     pub tokens: Vec<Token>,
@@ -33,11 +33,20 @@ impl Parser {
 
             if let Some(Token::Ident(name)) = self.consume() {
                 let name = name.clone();
+                let mut ty: Option<TypeKind> = None;
+
+                if matches!(self.peek(), Some(Token::Colon)) {
+                    self.consume();
+                    ty = match self.consume() {
+                        Some(Token::Type(t)) => Some(t.clone()),
+                        _ => None,
+                    }
+                }
 
                 if matches!(self.peek(), Some(Token::Assign)) {
                     self.consume();
                     let right = self.parse_assignment();
-                    return Expr::LetDecl(name, Box::new(right));
+                    return Expr::LetDecl(name, Box::new(right), ty);
                 }
             }
         }
@@ -47,11 +56,21 @@ impl Parser {
 
             if let Some(Token::Ident(name)) = self.consume() {
                 let name = name.clone();
+                let mut ty: Option<TypeKind> = None;
+
+                if matches!(self.peek(), Some(Token::Colon)) {
+                    self.consume();
+                    
+                    ty = match self.consume() {
+                        Some(Token::Type(t)) => Some(t.clone()),
+                        _ => None,
+                    }
+                }
 
                 if matches!(self.peek(), Some(Token::Assign)) {
                     self.consume();
                     let right = self.parse_assignment();
-                    return Expr::MakeDecl(name, Box::new(right));
+                    return Expr::MakeDecl(name, Box::new(right), ty);
                 }
             }
         }
@@ -114,7 +133,7 @@ impl Parser {
 
     fn parse_primary(&mut self) -> Expr {
         match self.consume() {
-            Some(Token::Number(n)) => Expr::Number(*n),
+            Some(Token::NumberLiteral(n)) => Expr::NumberLiteral(n.clone()),
             Some(Token::String(s)) => Expr::String(s.clone()),
             Some(Token::Bool(b)) => Expr::Bool(*b),
             Some(Token::Ident(name)) => Expr::Var(name.clone()),
