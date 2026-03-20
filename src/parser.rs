@@ -151,6 +151,6 @@ impl Parser {
         self.consume(); // (
         let expr = self.parse_expr();
         self.consume(); // )
-        expr
+        Expr::Call(Box::new(Expr::Var(String::from("print"))), vec![expr])
     }
 }

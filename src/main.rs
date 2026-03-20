@@ -40,7 +40,7 @@ fn main() {
         println!("AST is: {:?}", ast);
 
         for expr in ast {
-            check_types(expr, &mut env);
+            check_types(&expr, &mut env);
         }
     } else {
         println!("Error reading source file");

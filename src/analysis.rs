@@ -75,7 +75,7 @@ fn infer_type(expr: &Expr, env: &TypeEnv, expected: Option<&TypeKind>) -> TypeKi
     }
 }
 
-pub fn check_types(expr: Expr, env: &mut TypeEnv) {
+pub fn check_types(expr: &Expr, env: &mut TypeEnv) {
     match &expr {
         Expr::Add(_, _) => {
             infer_type(&expr, env, None);
