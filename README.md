@@ -22,8 +22,8 @@ We're in extremely early development, and the Velocity language is not usable. Y
 
 You can assign numbers, strings, and booleans to identifiers.
 
-- `let`: define a mutable value. e.g. `let x = 0`
-- `make`: define an immutable value. e.g. `make base = 10`
+- `let`: define an immutable value. e.g. `let base = 10`
+- `mut` modifier: define a mutable value. e.g. `let mut x = 0`
 
 ## Math
 
