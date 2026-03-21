@@ -64,7 +64,7 @@ pub fn get_next_token(chars: &mut Peekable<Chars>) -> Option<Token> {
 
             let mut tokens= HashMap::new();
             tokens.insert("let", Token::Let);
-            tokens.insert("make", Token::Make);
+            tokens.insert("mut", Token::Mut);
             tokens.insert("true", Token::Bool(true));
             tokens.insert("false", Token::Bool(false));
             tokens.insert("print", Token::Print);

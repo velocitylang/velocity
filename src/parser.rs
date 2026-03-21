@@ -31,28 +31,12 @@ impl Parser {
         if matches!(self.peek(), Some(Token::Let)) {
             self.consume();
 
-            if let Some(Token::Ident(name)) = self.consume() {
-                let name = name.clone();
-                let mut ty: Option<TypeKind> = None;
+            let mut mutable = false;
 
-                if matches!(self.peek(), Some(Token::Colon)) {
-                    self.consume();
-                    ty = match self.consume() {
-                        Some(Token::Type(t)) => Some(t.clone()),
-                        _ => None,
-                    }
-                }
-
-                if matches!(self.peek(), Some(Token::Assign)) {
-                    self.consume();
-                    let right = self.parse_assignment();
-                    return Expr::LetDecl(name, Box::new(right), ty);
-                }
+            if matches!(self.peek(), Some(Token::Mut)) {
+                self.consume();
+                mutable = true;
             }
-        }
-
-        if matches!(self.peek(), Some(Token::Make)) {
-            self.consume();
 
             if let Some(Token::Ident(name)) = self.consume() {
                 let name = name.clone();
@@ -60,7 +44,6 @@ impl Parser {
 
                 if matches!(self.peek(), Some(Token::Colon)) {
                     self.consume();
-                    
                     ty = match self.consume() {
                         Some(Token::Type(t)) => Some(t.clone()),
                         _ => None,
@@ -70,7 +53,7 @@ impl Parser {
                 if matches!(self.peek(), Some(Token::Assign)) {
                     self.consume();
                     let right = self.parse_assignment();
-                    return Expr::MakeDecl(name, Box::new(right), ty);
+                    return Expr::LetDecl(name, Box::new(right), mutable, ty);
                 }
             }
         }

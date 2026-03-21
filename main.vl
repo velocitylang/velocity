@@ -1,18 +1,18 @@
 print("Welcome to Velocity")
-let x: i32 = 1
-make y: i32 = 5
+let mut x: i32 = 1
+let y: i32 = 5
 
 x = -1
 
-let name: string = "Jason"
+let mut name: string = "Jason"
 name = "Makenzie"
 
-make result: string = "Done"
-make t_bool: bool = true
-make f_bool: bool = false
+let result: string = "Done"
+let t_bool: bool = true
+let f_bool: bool = false
 
-make total: i32 = x + y
-make derived: i32 = x + 300
+let total: i32 = x + y
+let derived: i32 = x + 300
 
 print(total)
 print("Done!")

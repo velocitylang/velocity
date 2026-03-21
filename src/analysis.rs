@@ -96,7 +96,7 @@ pub fn check_types(expr: &Expr, env: &mut TypeEnv) {
                 _ => panic!("Identifier {ident} not found")
             }
         },
-        Expr::LetDecl(ident, expr, ty) => {
+        Expr::LetDecl(ident, expr, mutable, ty) => {
             if let Some(_) = env.idents.get(ident) {
                 panic!("Cannot redeclare existing identifier {ident}");
             }
@@ -107,25 +107,9 @@ pub fn check_types(expr: &Expr, env: &mut TypeEnv) {
                 if inferred_type != *t {
                     panic!("Value for {:?} does not match declared type {:?}", ident, t);
                 }
-                env.idents.insert(String::from(ident), TypeBinding { ty: t.clone(), mutable: true });
+                env.idents.insert(String::from(ident), TypeBinding { ty: t.clone(), mutable: *mutable });
             } else {
-                env.idents.insert(String::from(ident), TypeBinding { ty: inferred_type, mutable: true });
-            }
-        },
-        Expr::MakeDecl(ident, expr, ty) => {
-            if let Some(_) = env.idents.get(ident) {
-                panic!("Cannot redeclare existing identifier {ident}");
-            }
-
-            let inferred_type = infer_type(&expr, env, ty.as_ref());
-
-            if let Some(t) = ty {
-                if inferred_type != *t {
-                    panic!("Value for {:?} does not match declared type {:?}", ident, t);
-                }
-                env.idents.insert(String::from(ident), TypeBinding { ty: t.clone(), mutable: false });
-            } else {
-                env.idents.insert(String::from(ident), TypeBinding { ty: inferred_type, mutable: false });
+                env.idents.insert(String::from(ident), TypeBinding { ty: inferred_type, mutable: *mutable });
             }
         },
         Expr::Print(expr) => {
