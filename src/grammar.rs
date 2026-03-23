@@ -22,9 +22,35 @@ pub enum Expr {
     Mul(Box<Expr>, Box<Expr>),
     Div(Box<Expr>, Box<Expr>),
     Var(String),
-    LetDecl(String, Box<Expr>, bool, Option<TypeKind>),
-    Print(Box<Expr>),
-    Reassign(String, Box<Expr>),
+}
+
+#[derive(Clone, Debug)]
+pub enum Stmt {
+    ExprStmt(Expr),
+    Let(String, Expr, bool, Option<TypeKind>),
+    Print(Expr),
+    Reassign(String, Expr),
+}
+#[derive(Clone, Debug)]
+pub struct FnDecl {
+    pub name: String,
+    pub params: Vec<FnParam>,
+    pub body: Vec<Stmt>,
+    pub return_type: Option<TypeKind>,
+}
+#[derive(Clone, Debug)]
+pub struct FnParam {
+    pub name: String,
+    pub mutable: bool,
+    pub modifier: Option<ParamModifier>,
+    pub ty: Option<TypeKind>,
+}
+
+#[derive(Clone, Debug)]
+pub enum ParamModifier {
+    Ref,
+    Copy,
+    Move,
 }
 
 #[derive(Debug, PartialEq, Clone)]

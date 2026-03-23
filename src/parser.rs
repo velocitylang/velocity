@@ -1,4 +1,4 @@
-use crate::grammar::{Expr, Token, TypeKind};
+use crate::grammar::{Expr, Stmt, Token, TypeKind};
 
 pub struct Parser {
     pub tokens: Vec<Token>,
@@ -9,6 +9,9 @@ impl Parser {
     pub fn peek(&self) -> Option<&Token> {
         self.tokens.get(self.pos)
     }
+    pub fn peek_ahead(&self, offset: usize) -> Option<&Token> {
+        self.tokens.get(self.pos + offset)
+    }
 
     fn consume(&mut self) -> Option<&Token> {
         let token = self.tokens.get(self.pos);
@@ -18,58 +21,71 @@ impl Parser {
         token
     }
 
-    pub fn parse_statement(&mut self) -> Expr {
+    pub fn parse_stmt(&mut self) -> Stmt {
         let token = self.peek();
 
         match token {
             Some(Token::Print) => self.parse_print(),
-            _ => self.parse_assignment(),
+            Some(Token::Let) => self.parse_let_stmt(),
+            Some(Token::Ident(_)) => {
+                if let Some(Token::Assign) = self.peek_ahead(1) {
+                    self.parse_assign_stmt()
+                } else {
+                    Stmt::ExprStmt(self.parse_expr())
+                }
+            }
+            Some(Token::Assign) => self.parse_assign_stmt(),
+            _ => Stmt::ExprStmt(self.parse_expr()),
         }
     }
 
-    fn parse_assignment(&mut self) -> Expr {
-        if matches!(self.peek(), Some(Token::Let)) {
+    fn parse_let_stmt(&mut self) -> Stmt {
+        self.consume();
+
+        let mut mutable = false;
+
+        if matches!(self.peek(), Some(Token::Mut)) {
             self.consume();
-
-            let mut mutable = false;
-
-            if matches!(self.peek(), Some(Token::Mut)) {
-                self.consume();
-                mutable = true;
-            }
-
-            if let Some(Token::Ident(name)) = self.consume() {
-                let name = name.clone();
-                let mut ty: Option<TypeKind> = None;
-
-                if matches!(self.peek(), Some(Token::Colon)) {
-                    self.consume();
-                    ty = match self.consume() {
-                        Some(Token::Type(t)) => Some(t.clone()),
-                        _ => None,
-                    }
-                }
-
-                if matches!(self.peek(), Some(Token::Assign)) {
-                    self.consume();
-                    let right = self.parse_assignment();
-                    return Expr::LetDecl(name, Box::new(right), mutable, ty);
-                }
-            }
+            mutable = true;
         }
 
+        if let Some(Token::Ident(name)) = self.consume() {
+            let name = name.clone();
+            let mut ty: Option<TypeKind> = None;
+
+            if matches!(self.peek(), Some(Token::Colon)) {
+                self.consume();
+                ty = match self.consume() {
+                    Some(Token::Type(t)) => Some(t.clone()),
+                    _ => None,
+                }
+            }
+
+            if matches!(self.peek(), Some(Token::Assign)) {
+                self.consume();
+                let right = self.parse_expr();
+                return Stmt::Let(name, right, mutable, ty);
+            } else {
+                panic!("Expected assign (=) in let statement");
+            }
+        } else {
+            panic!("Expected identifier in let statement");
+        }
+    }
+
+    fn parse_assign_stmt(&mut self) -> Stmt {
         if let Some(Token::Ident(name)) = self.peek() {
             let name = name.clone();
 
             if matches!(self.tokens.get(self.pos + 1), Some(Token::Assign)) {
                 self.consume(); // ident
                 self.consume(); // =
-                let right = self.parse_assignment();
-                return Expr::Reassign(name, Box::new(right));
+                let right = self.parse_expr();
+                return Stmt::Reassign(name, right);
             }
         }
 
-        self.parse_expr()
+        Stmt::ExprStmt(self.parse_expr())
     }
 
     fn parse_expr(&mut self) -> Expr {
@@ -129,11 +145,11 @@ impl Parser {
         }
     }
 
-    fn parse_print(&mut self) -> Expr {
+    fn parse_print(&mut self) -> Stmt {
         self.consume(); // print
         self.consume(); // (
         let expr = self.parse_expr();
         self.consume(); // )
-        Expr::Call(Box::new(Expr::Var(String::from("print"))), vec![expr])
+        Stmt::Print(expr)
     }
 }

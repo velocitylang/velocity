@@ -1,4 +1,4 @@
-use crate::grammar::{Expr, TypeBinding, TypeEnv, TypeKind};
+use crate::grammar::{Expr, Stmt, TypeBinding, TypeEnv, TypeKind};
 
 fn infer_type(expr: &Expr, env: &TypeEnv, expected: Option<&TypeKind>) -> TypeKind {
     match expr {
@@ -75,28 +75,19 @@ fn infer_type(expr: &Expr, env: &TypeEnv, expected: Option<&TypeKind>) -> TypeKi
     }
 }
 
-pub fn check_types(expr: &Expr, env: &mut TypeEnv) {
-    match &expr {
-        Expr::Add(_, _) => {
-            infer_type(&expr, env, None);
-        },
-        Expr::Sub(_, _) => {
-            infer_type(&expr, env, None);
-        },
-        Expr::Mul(_, _) => {
-            infer_type(&expr, env, None);
-        },
-        Expr::Div(_, _) => {
-            infer_type(&expr, env, None);
-        },
-        Expr::Var(ident) => {
+pub fn check_stmt_types(stmt: &Stmt, env: &mut TypeEnv) {
+    match &stmt {
+        Stmt::ExprStmt(Expr::Var(ident)) => {
             let value = env.idents.get(ident);
             match value {
                 Some(_) => {},
                 _ => panic!("Identifier {ident} not found")
             }
         },
-        Expr::LetDecl(ident, expr, mutable, ty) => {
+        Stmt::ExprStmt(expr) => {
+            infer_type(&expr, env, None);
+        },
+        Stmt::Let(ident, expr, mutable, ty) => {
             if let Some(_) = env.idents.get(ident) {
                 panic!("Cannot redeclare existing identifier {ident}");
             }
@@ -112,10 +103,10 @@ pub fn check_types(expr: &Expr, env: &mut TypeEnv) {
                 env.idents.insert(String::from(ident), TypeBinding { ty: inferred_type, mutable: *mutable });
             }
         },
-        Expr::Print(expr) => {
+        Stmt::Print(expr) => {
             infer_type(&expr, env, None);
         },
-        Expr::Reassign(ident, expr) => {
+        Stmt::Reassign(ident, expr) => {
             let binding = env.idents.get(ident)
                 .expect(&format!("Cannot reassign undefined identifier {ident}"));
 
@@ -132,6 +123,5 @@ pub fn check_types(expr: &Expr, env: &mut TypeEnv) {
 
             env.idents.insert(String::from(ident), TypeBinding { ty: expected_type, mutable: true });
         },
-        _ => {},
     }
 }

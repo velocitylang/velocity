@@ -1,15 +1,17 @@
 use std::collections::HashMap;
 use std::fs;
 
-use crate::analysis::{check_types};
-use crate::grammar::{Expr, Token, TypeEnv};
+use crate::analysis::{check_stmt_types};
+use crate::grammar::{Stmt, Token, TypeEnv};
 use crate::lexer::get_next_token;
 use crate::parser::Parser;
+use crate::vir::{Item, Program, lower_program};
 
 pub mod analysis;
 pub mod grammar;
 pub mod lexer;
 pub mod parser;
+pub mod vir;
 
 fn main() {
     let source_result = fs::read_to_string("./main.vl");
@@ -30,18 +32,29 @@ fn main() {
         let mut env = TypeEnv {
             idents: HashMap::new()
         };
-        let mut ast: Vec<Expr> = Vec::new();
+        let mut ast: Program = Program { items: Vec::new() };
 
         while parser.peek().is_some() {
-            let expr: Expr = parser.parse_statement();
-            ast.push(expr);
+            let stmt: Stmt = parser.parse_stmt();
+            ast.items.push(Item::Stmt(stmt));
         }
 
-        println!("AST is: {:?}", ast);
+        println!("AST is: {:?}\n", ast);
 
-        for expr in ast {
-            check_types(&expr, &mut env);
+        for item in &ast.items {
+            match item {
+                Item::Stmt(stmt) => {
+                    check_stmt_types(&stmt, &mut env);
+                },
+                Item::Function(_fnct) => {
+                    // check function types
+                }
+            }
         }
+
+        let vir = lower_program(&ast);
+
+        println!("\nVIR is {:?}\n", vir);
     } else {
         println!("Error reading source file");
     }
