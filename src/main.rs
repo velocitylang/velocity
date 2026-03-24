@@ -5,12 +5,14 @@ use crate::analysis::{check_stmt_types};
 use crate::grammar::{Stmt, Token, TypeEnv};
 use crate::lexer::get_next_token;
 use crate::parser::Parser;
+use crate::ppv::dump_vir;
 use crate::vir::{Item, Program, lower_program};
 
 pub mod analysis;
 pub mod grammar;
 pub mod lexer;
 pub mod parser;
+pub mod ppv;
 pub mod vir;
 
 fn main() {
@@ -55,6 +57,8 @@ fn main() {
         let vir = lower_program(&ast);
 
         println!("\nVIR is {:?}\n", vir);
+        println!("Pretty Print VIR:");
+        dump_vir(&vir)
     } else {
         println!("Error reading source file");
     }
