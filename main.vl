@@ -1,6 +1,7 @@
 print("Welcome to Velocity")
 let mut x: i32 = 1
 let y: i32 = 5
+let z = 10
 
 x = -1
 
