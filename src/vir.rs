@@ -1,6 +1,6 @@
 use std::{collections::HashMap};
 
-use crate::grammar::{Expr, FnDecl, Stmt, TypeKind};
+use crate::{grammar::{Expr, FnDecl, Stmt, TypeKind}, ppv::dump_vir};
 
 #[derive(Debug)]
 pub struct Program {
@@ -287,6 +287,17 @@ pub fn lower_program(ast: &Program) -> Vir {
 
     ctx.func.emit_return(ctx.current_block, None);
 
+    println!("\nVIR is {:?}\n", vir);
+    println!("Pretty Printed VIR:");
+    dump_vir(&vir);
+
+    // Verify VIR
+    if let Err(err) = verify_vir(&vir) {
+        panic!("{err}");
+    } else {
+        println!("\nVIR verified ✅")
+    }
+
     vir
 }
 
@@ -490,4 +501,324 @@ pub fn parse_number_literal(text: &str, ty: &TypeKind) -> Constant {
         ),
         other => panic!("numeric literal cannot have type {:?}", other),
     }
+}
+
+pub fn verify_vir(vir: &Vir) -> Result<(), String> {
+    for (func_idx, func) in vir.functions.iter().enumerate() {
+        verify_function(func).map_err(|err| {
+            format!(
+                "VIR verification failed for function #{} ('{}'): {}",
+                func_idx, func.name, err
+            )
+        })?;
+    }
+
+    Ok(())
+}
+
+pub fn verify_function(func: &VirFunction) -> Result<(), String> {
+    let entry_idx = func.entry.0 as usize;
+    if entry_idx >= func.blocks.len() {
+        return Err(format!(
+            "entry block {:?} does not exist (blocks.len() = {})",
+            func.entry,
+            func.blocks.len()
+        ));
+    }
+
+    verify_block_params(func)?;
+    verify_block_structure(func)?;
+    verify_insts(func)?;
+
+    Ok(())
+}
+
+fn verify_block_params(func: &VirFunction) -> Result<(), String> {
+    for (block_idx, block) in func.blocks.iter().enumerate() {
+        let block_id = BlockId(block_idx as u32);
+
+        for param_id in &block.params {
+            let param_idx = param_id.0 as usize;
+
+            if param_idx >= func.block_params.len() {
+                return Err(format!(
+                    "block {:?} references invalid ParamId({})",
+                    block_id, param_id.0
+                ));
+            }
+
+            let param = &func.block_params[param_idx];
+
+            if param.block != block_id {
+                return Err(format!(
+                    "block {:?} contains ParamId({}), but that param belongs to \
+                     block {:?}",
+                    block_id, param_id.0, param.block
+                ));
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn verify_block_structure(func: &VirFunction) -> Result<(), String> {
+    let mut inst_owner: Vec<Option<BlockId>> = vec![None; func.insts.len()];
+
+    for (block_idx, block) in func.blocks.iter().enumerate() {
+        let block_id = BlockId(block_idx as u32);
+
+        if block.insts.is_empty() {
+            return Err(format!("block {:?} is empty", block_id));
+        }
+
+        let mut saw_terminator = false;
+
+        for inst_id in &block.insts {
+            let inst_idx = inst_id.0 as usize;
+
+            if inst_idx >= func.insts.len() {
+                return Err(format!(
+                    "block {:?} references invalid InstId({})",
+                    block_id, inst_id.0
+                ));
+            }
+
+            if saw_terminator {
+                return Err(format!(
+                    "block {:?} contains instruction {:?} after a terminator",
+                    block_id, inst_id
+                ));
+            }
+
+            if let Some(owner) = inst_owner[inst_idx] {
+                return Err(format!(
+                    "instruction {:?} appears in multiple blocks: {:?} and {:?}",
+                    inst_id, owner, block_id
+                ));
+            }
+
+            inst_owner[inst_idx] = Some(block_id);
+
+            let inst = &func.insts[inst_idx];
+            if is_terminator(inst) {
+                saw_terminator = true;
+            }
+        }
+
+        let last_inst_id = block.insts.last().copied().unwrap();
+        let last_inst = &func.insts[last_inst_id.0 as usize];
+
+        if !is_terminator(last_inst) {
+            return Err(format!(
+                "block {:?} does not end in a terminator",
+                block_id
+            ));
+        }
+    }
+
+    for (inst_idx, owner) in inst_owner.iter().enumerate() {
+        if owner.is_none() {
+            return Err(format!(
+                "instruction InstId({}) is not placed in any block",
+                inst_idx
+            ));
+        }
+    }
+
+    Ok(())
+}
+
+fn verify_insts(func: &VirFunction) -> Result<(), String> {
+    for (inst_idx, inst) in func.insts.iter().enumerate() {
+        let inst_id = InstId(inst_idx as u32);
+
+        match inst {
+            Inst::Value(value_inst) => {
+                verify_value_inst(func, inst_id, value_inst)?;
+            }
+            Inst::Effect(effect_inst) => {
+                verify_effect_inst(func, inst_id, effect_inst)?;
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn verify_value_inst(
+    func: &VirFunction,
+    inst_id: InstId,
+    inst: &ValueInst,
+) -> Result<(), String> {
+    match &inst.kind {
+        ValueInstKind::Const { value } => {
+            let actual_ty = value.ty();
+            if actual_ty != inst.ty {
+                return Err(format!(
+                    "instruction {:?} is const {:?} but has result type {:?}",
+                    inst_id, actual_ty, inst.ty
+                ));
+            }
+        }
+
+        ValueInstKind::Add { lhs, rhs }
+        | ValueInstKind::Sub { lhs, rhs }
+        | ValueInstKind::Mul { lhs, rhs }
+        | ValueInstKind::Div { lhs, rhs } => {
+            let lhs_ty = value_ty_checked(func, *lhs)?;
+            let rhs_ty = value_ty_checked(func, *rhs)?;
+
+            if lhs_ty != rhs_ty {
+                return Err(format!(
+                    "instruction {:?} has mismatched operand types: \
+                     lhs={:?}, rhs={:?}",
+                    inst_id, lhs_ty, rhs_ty
+                ));
+            }
+
+            if *lhs_ty != inst.ty {
+                return Err(format!(
+                    "instruction {:?} result type {:?} does not match operand \
+                     type {:?}",
+                    inst_id, inst.ty, lhs_ty
+                ));
+            }
+
+            if !is_numeric_ty(lhs_ty) {
+                return Err(format!(
+                    "instruction {:?} uses non-numeric type {:?} in arithmetic",
+                    inst_id, lhs_ty
+                ));
+            }
+        }
+
+        ValueInstKind::Neg { value } => {
+            let value_ty = value_ty_checked(func, *value)?;
+
+            if *value_ty != inst.ty {
+                return Err(format!(
+                    "instruction {:?} neg result type {:?} does not match \
+                     operand type {:?}",
+                    inst_id, inst.ty, value_ty
+                ));
+            }
+
+            if !is_numeric_ty(value_ty) {
+                return Err(format!(
+                    "instruction {:?} neg uses non-numeric type {:?}",
+                    inst_id, value_ty
+                ));
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn verify_effect_inst(
+    func: &VirFunction,
+    inst_id: InstId,
+    inst: &EffectInst,
+) -> Result<(), String> {
+    match inst {
+        EffectInst::Print { value } => {
+            let _ = value_ty_checked(func, *value)?;
+        }
+
+        EffectInst::Return { value } => match (&func.sig.ret_ty, value) {
+            (None, None) => {}
+
+            (None, Some(v)) => {
+                let ty = value_ty_checked(func, *v)?;
+                return Err(format!(
+                    "instruction {:?} returns value of type {:?}, but function \
+                     returns no value",
+                    inst_id, ty
+                ));
+            }
+
+            (Some(ret_ty), None) => {
+                return Err(format!(
+                    "instruction {:?} returns no value, but function expects \
+                     return type {:?}",
+                    inst_id, ret_ty
+                ));
+            }
+
+            (Some(ret_ty), Some(v)) => {
+                let value_ty = value_ty_checked(func, *v)?;
+                if value_ty != ret_ty {
+                    return Err(format!(
+                        "instruction {:?} returns value of type {:?}, but \
+                         function expects {:?}",
+                        inst_id, value_ty, ret_ty
+                    ));
+                }
+            }
+        },
+        _ => { panic!("Effect instruction '{:?}' not implemented yet", inst); }
+    }
+
+    Ok(())
+}
+
+fn value_ty_checked<'a>(
+    func: &'a VirFunction,
+    value: ValueId,
+) -> Result<&'a TypeKind, String> {
+    match value {
+        ValueId::Inst(inst_id) => {
+            let inst_idx = inst_id.0 as usize;
+
+            if inst_idx >= func.insts.len() {
+                return Err(format!(
+                    "ValueId::Inst({}) refers to non-existent instruction",
+                    inst_id.0
+                ));
+            }
+
+            match &func.insts[inst_idx] {
+                Inst::Value(value_inst) => Ok(&value_inst.ty),
+                Inst::Effect(_) => Err(format!(
+                    "ValueId::Inst({}) refers to an effect instruction, not a \
+                     value-producing instruction",
+                    inst_id.0
+                )),
+            }
+        }
+
+        ValueId::Param(param_id) => {
+            let param_idx = param_id.0 as usize;
+
+            if param_idx >= func.block_params.len() {
+                return Err(format!(
+                    "ValueId::Param({}) refers to non-existent block param",
+                    param_id.0
+                ));
+            }
+
+            Ok(&func.block_params[param_idx].ty)
+        }
+    }
+}
+
+fn is_terminator(inst: &Inst) -> bool {
+    matches!(inst, Inst::Effect(EffectInst::Return { .. }))
+}
+
+fn is_numeric_ty(ty: &TypeKind) -> bool {
+    matches!(
+        ty,
+        TypeKind::I8
+            | TypeKind::I16
+            | TypeKind::I32
+            | TypeKind::I64
+            | TypeKind::U8
+            | TypeKind::U16
+            | TypeKind::U32
+            | TypeKind::U64
+            | TypeKind::F32
+            | TypeKind::F64
+    )
 }
