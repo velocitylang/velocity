@@ -56,6 +56,7 @@ pub struct Vir {
 #[derive(Clone, Debug)]
 pub struct VirFunction {
     pub name: String,
+    pub sig: FunctionSig,
     pub entry: BlockId,
     pub blocks: Vec<Block>,
     pub insts: Vec<Inst>,
@@ -66,8 +67,12 @@ impl VirFunction {
     pub fn new(name: String) -> VirFunction {
         return VirFunction {
             name,
+            sig: FunctionSig {
+                params: Vec::new(),
+                ret: None,
+            },
             entry: BlockId(0),
-            blocks: vec![Block { insts: Vec::new() }],
+            blocks: vec![Block { insts: Vec::new(), params: Vec::new() }],
             insts: Vec::new(),
             params: Vec::new(),
         }
@@ -76,7 +81,8 @@ impl VirFunction {
     pub fn new_block(&mut self) -> BlockId {
         let id = BlockId(self.blocks.len() as u32);
         self.blocks.push(Block {
-            insts: Vec::new()
+            insts: Vec::new(),
+            params: Vec::new(),
         });
         id
     }
@@ -154,12 +160,19 @@ impl VirFunction {
 #[derive(Clone, Debug)]
 pub struct Block {
     pub insts: Vec<InstId>,
+    pub params: Vec<ParamId>,
 }
 
 #[derive(Clone, Debug)]
 pub enum Inst {
     Value(ValueInst),
     Effect(EffectInst),
+}
+
+#[derive(Clone, Debug)]
+pub struct FunctionSig {
+    pub params: Vec<TypeKind>,
+    pub ret: Option<TypeKind>,
 }
 
 #[derive(Clone, Debug)]
@@ -182,6 +195,14 @@ pub enum ValueInstKind {
 pub enum EffectInst {
     Print { value: ValueId },
     Return { value: Option<ValueId> },
+    Jump { target: BlockId, args: Vec<ValueId> },
+    Branch {
+        cond: ValueId,
+        then_block: BlockId,
+        then_args: Vec<ValueId>,
+        else_block: BlockId,
+        else_args: Vec<ValueId>,
+    },
 }
 
 #[derive(Clone, Debug)]
