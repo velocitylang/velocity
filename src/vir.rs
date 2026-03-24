@@ -68,7 +68,7 @@ impl VirFunction {
         return VirFunction {
             name,
             sig: FunctionSig {
-                params_ty: Vec::new(),
+                param_tys: Vec::new(),
                 ret_ty: None,
             },
             entry: BlockId(0),
@@ -171,7 +171,7 @@ pub enum Inst {
 
 #[derive(Clone, Debug)]
 pub struct FunctionSig {
-    pub params_ty: Vec<TypeKind>,
+    pub param_tys: Vec<TypeKind>,
     pub ret_ty: Option<TypeKind>,
 }
 
