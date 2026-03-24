@@ -55,12 +55,12 @@ pub struct Vir {
 
 #[derive(Clone, Debug)]
 pub struct VirFunction {
+    pub block_params: Vec<BlockParamData>,
+    pub blocks: Vec<Block>,
+    pub entry: BlockId,
+    pub insts: Vec<Inst>,
     pub name: String,
     pub sig: FunctionSig,
-    pub entry: BlockId,
-    pub blocks: Vec<Block>,
-    pub insts: Vec<Inst>,
-    pub params: Vec<ParamData>,
 }
 
 impl VirFunction {
@@ -68,13 +68,13 @@ impl VirFunction {
         return VirFunction {
             name,
             sig: FunctionSig {
-                params: Vec::new(),
-                ret: None,
+                params_ty: Vec::new(),
+                ret_ty: None,
             },
             entry: BlockId(0),
             blocks: vec![Block { insts: Vec::new(), params: Vec::new() }],
             insts: Vec::new(),
-            params: Vec::new(),
+            block_params: Vec::new(),
         }
     }
 
@@ -152,7 +152,7 @@ impl VirFunction {
                     panic!("ValueId::Inst({inst_id:?}) refers to non-value instruction")
                 }
             },
-            ValueId::Param(param_id) => &self.params[param_id.0 as usize].ty,
+            ValueId::Param(param_id) => &self.block_params[param_id.0 as usize].ty,
         }
     }
 }
@@ -171,8 +171,8 @@ pub enum Inst {
 
 #[derive(Clone, Debug)]
 pub struct FunctionSig {
-    pub params: Vec<TypeKind>,
-    pub ret: Option<TypeKind>,
+    pub params_ty: Vec<TypeKind>,
+    pub ret_ty: Option<TypeKind>,
 }
 
 #[derive(Clone, Debug)]
@@ -206,7 +206,7 @@ pub enum EffectInst {
 }
 
 #[derive(Clone, Debug)]
-pub struct ParamData {
+pub struct BlockParamData {
     pub block: BlockId,
     pub ty: TypeKind,
 }
