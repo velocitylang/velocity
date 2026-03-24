@@ -208,7 +208,14 @@ pub struct BlockId(pub u32);
 pub struct LowerCtx<'a> {
     pub func: &'a mut VirFunction,
     pub current_block: BlockId,
-    pub locals: HashMap<String, ValueId>
+    pub locals: HashMap<String, LocalBinding>
+}
+
+#[derive(Clone, Debug)]
+pub struct LocalBinding {
+    pub value: ValueId,
+    pub ty: TypeKind,
+    pub mutable: bool,
 }
 
 pub fn lower_program(ast: &Program) -> Vir {
@@ -271,75 +278,195 @@ fn lower_stmt_to_vir(ctx: &mut LowerCtx, stmt: &Stmt) {
 
     match stmt {
         Stmt::Print(expr) => {
-            let v = lower_expr_to_vir(ctx, expr);
-            ctx.func.emit_print(ctx.current_block, v);
+            let value = lower_expr_to_vir(ctx, expr, None);
+            ctx.func.emit_print(ctx.current_block, value);
         }
 
-        Stmt::Let(name, expr, _mutable, _ty) => {
-            let v = lower_expr_to_vir(ctx, expr);
-            ctx.locals.insert(name.clone(), v);
+        Stmt::Let(name, expr, is_mutable, declared_ty) => {
+            let ty = declared_ty
+                .as_ref()
+                .expect("type inference should have assigned a type to every let");
+            let value = lower_expr_to_vir(ctx, expr, Some(ty));
+            let actual_ty = ctx.func.value_ty(value).clone();
+
+            if &actual_ty != ty {
+                panic!(
+                    "let '{}' expected type {:?}, got {:?}",
+                    name, ty, actual_ty
+                );
+            }
+
+            ctx.locals.insert(
+                name.clone(), 
+                LocalBinding {
+                    value,
+                    ty: actual_ty,
+                    mutable: *is_mutable,
+                });
         }
 
         Stmt::ExprStmt(expr) => {
-            let _ = lower_expr_to_vir(ctx, expr);
+            let _ = lower_expr_to_vir(ctx, expr, None);
         }
 
         Stmt::Reassign(name, expr) => {
-            let v = lower_expr_to_vir(ctx, expr);
+            let binding = ctx
+                .locals
+                .get(name)
+                .unwrap_or_else(|| panic!("unknown variable '{name}'"))
+                .clone();
 
-            if !ctx.locals.contains_key(name) {
-                panic!("cannot reassign unknown variable '{name}'");
+            if !binding.mutable {
+                panic!("cannot reassign immutable variable '{name}'");
             }
 
-            ctx.locals.insert(name.clone(), v);
+            let value = lower_expr_to_vir(ctx, expr, Some(&binding.ty));
+            let actual_ty = ctx.func.value_ty(value).clone();
+
+            if actual_ty != binding.ty {
+                panic!(
+                    "cannot assign value of type {:?} to variable '{}' of type {:?}",
+                    actual_ty, name, binding.ty
+                );
+            }
+
+            ctx.locals.insert(
+                name.clone(),
+                LocalBinding {
+                    value,
+                    ty: binding.ty,
+                    mutable: true,
+                },
+            );
         }
     }
 }
 
-fn lower_expr_to_vir(ctx: &mut LowerCtx<'_>, expr: &Expr) -> ValueId {
+fn lower_expr_to_vir(ctx: &mut LowerCtx<'_>, expr: &Expr, expected_ty: Option<&TypeKind>) -> ValueId {
     match expr {
         Expr::NumberLiteral(n) => {
-            let value = Constant::I32(
-                n.parse::<i32>()
-                    .expect("invalid i32 literal"),
-            );
+            let ty = expected_ty.cloned().unwrap_or(TypeKind::I64);
+            let value = parse_number_literal(n, &ty);
             ctx.func.emit_const(ctx.current_block, value)
         }
 
         Expr::String(s) => {
+            if let Some(expected) = expected_ty {
+                if *expected != TypeKind::String {
+                    panic!(
+                        "string literal does not match expected type {:?}",
+                        expected
+                    );
+                }
+            }
             ctx.func
                 .emit_const(ctx.current_block, Constant::String(s.clone()))
         }
 
         Expr::Bool(b) => {
+            if let Some(expected) = expected_ty {
+                if *expected != TypeKind::Bool {
+                    panic!(
+                        "bool literal does not match expected type {:?}",
+                        expected
+                    );
+                }
+            }
             ctx.func.emit_const(ctx.current_block, Constant::Bool(*b))
         }
 
-        Expr::Var(name) => *ctx
-            .locals
-            .get(name)
-            .unwrap_or_else(|| panic!("unknown variable '{name}'")),
+        Expr::Var(name) => ctx
+                .locals
+                .get(name)
+                .unwrap_or_else(|| panic!("unknown variable '{name}'"))
+                .value,
 
         Expr::Add(lhs, rhs) => {
-            let lhs_v = lower_expr_to_vir(ctx, lhs);
-            let rhs_v = lower_expr_to_vir(ctx, rhs);
-            ctx.func
-                .emit_add(ctx.current_block, lhs_v, rhs_v, TypeKind::I32)
+            let lhs_v = lower_expr_to_vir(ctx, lhs, expected_ty);
+
+            let ty = expected_ty
+                .cloned()
+                .unwrap_or_else(|| ctx.func.value_ty(lhs_v).clone());
+
+            let rhs_v = lower_expr_to_vir(ctx, rhs, Some(&ty));
+
+            let lhs_ty = ctx.func.value_ty(lhs_v).clone();
+            let rhs_ty = ctx.func.value_ty(rhs_v).clone();
+
+            if lhs_ty != ty || rhs_ty != ty {
+                panic!(
+                    "type mismatch in add: lhs={:?}, rhs={:?}, expected={:?}",
+                    lhs_ty, rhs_ty, ty
+                );
+            }
+
+            ctx.func.emit_add(ctx.current_block, lhs_v, rhs_v, ty)
         }
 
         Expr::Sub(lhs, rhs) => {
-            let lhs_v = lower_expr_to_vir(ctx, lhs);
-            let rhs_v = lower_expr_to_vir(ctx, rhs);
-            ctx.func
-                .emit_sub(ctx.current_block, lhs_v, rhs_v, TypeKind::I32)
+            let lhs_v = lower_expr_to_vir(ctx, lhs, expected_ty);
+
+            let ty = expected_ty
+                .cloned()
+                .unwrap_or_else(|| ctx.func.value_ty(lhs_v).clone());
+
+            let rhs_v = lower_expr_to_vir(ctx, rhs, Some(&ty));
+
+            let lhs_ty = ctx.func.value_ty(lhs_v).clone();
+            let rhs_ty = ctx.func.value_ty(rhs_v).clone();
+
+            if lhs_ty != ty || rhs_ty != ty {
+                panic!(
+                    "type mismatch in sub: lhs={:?}, rhs={:?}, expected={:?}",
+                    lhs_ty, rhs_ty, ty
+                );
+            }
+
+            ctx.func.emit_sub(ctx.current_block, lhs_v, rhs_v, ty)
         }
 
         Expr::Negate(inner) => {
-            let inner_v = lower_expr_to_vir(ctx, inner);
+            let inner_v = lower_expr_to_vir(ctx, inner, expected_ty);
             let ty = ctx.func.value_ty(inner_v).clone();
             ctx.func.emit_neg(ctx.current_block, inner_v, ty)
         }
 
         _ => todo!("lower_expr_to_vir for {:?}", expr),
+    }
+}
+
+pub fn parse_number_literal(text: &str, ty: &TypeKind) -> Constant {
+    match ty {
+        TypeKind::I8 => Constant::I8(
+            text.parse::<i8>().expect("invalid i8 literal"),
+        ),
+        TypeKind::I16 => Constant::I16(
+            text.parse::<i16>().expect("invalid i16 literal"),
+        ),
+        TypeKind::I32 => Constant::I32(
+            text.parse::<i32>().expect("invalid i32 literal"),
+        ),
+        TypeKind::I64 => Constant::I64(
+            text.parse::<i64>().expect("invalid i64 literal"),
+        ),
+        TypeKind::U8 => Constant::U8(
+            text.parse::<u8>().expect("invalid u8 literal"),
+        ),
+        TypeKind::U16 => Constant::U16(
+            text.parse::<u16>().expect("invalid u16 literal"),
+        ),
+        TypeKind::U32 => Constant::U32(
+            text.parse::<u32>().expect("invalid u32 literal"),
+        ),
+        TypeKind::U64 => Constant::U64(
+            text.parse::<u64>().expect("invalid u64 literal"),
+        ),
+        TypeKind::F32 => Constant::F32(
+            text.parse::<f32>().expect("invalid f32 literal"),
+        ),
+        TypeKind::F64 => Constant::F64(
+            text.parse::<f64>().expect("invalid f64 literal"),
+        ),
+        other => panic!("numeric literal cannot have type {:?}", other),
     }
 }

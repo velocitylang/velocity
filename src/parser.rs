@@ -1,4 +1,4 @@
-use crate::grammar::{Expr, Stmt, Token, TypeKind};
+use crate::{grammar::{Expr, Stmt, Token, TypeKind}};
 
 pub struct Parser {
     pub tokens: Vec<Token>,
@@ -19,6 +19,26 @@ impl Parser {
             self.pos += 1;
         }
         token
+    }
+
+    fn infer_type(&self, expr: &Expr) -> TypeKind {
+        match expr {
+            Expr::Negate(inner) => {
+                let ty = self.infer_type(inner);
+
+                match ty {
+                    TypeKind::I8 | TypeKind::I16 | TypeKind::I32 | TypeKind::I64 |
+                    TypeKind::F32 | TypeKind::F64 => ty,
+                    TypeKind::U8 | TypeKind::U16 | TypeKind::U32 | TypeKind::U64 =>
+                        panic!("Cannot negate unsigned type {:?}", ty),
+                    _ => panic!("Cannot negate {:?}", ty),
+                }
+            },
+            Expr::String(_) => TypeKind::String,
+            Expr::Bool(_) => TypeKind::Bool,
+            Expr::NumberLiteral(_) => TypeKind::I64,
+            _ => panic!("Cannot infer type for {:?}", expr),
+        }
     }
 
     pub fn parse_stmt(&mut self) -> Stmt {
@@ -64,6 +84,9 @@ impl Parser {
             if matches!(self.peek(), Some(Token::Assign)) {
                 self.consume();
                 let right = self.parse_expr();
+                if ty == None {
+                    ty = Some(self.infer_type(&right));
+                }
                 return Stmt::Let(name, right, mutable, ty);
             } else {
                 panic!("Expected assign (=) in let statement");
