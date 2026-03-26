@@ -17,5 +17,7 @@ let derived: i32 = x + 300
 
 let if_res = if t_bool { 100 } else { 50 }
 
+if t_bool { print("is true") } else { print("is false") }
+
 print(total)
 print("Done!")
