@@ -48,3 +48,14 @@ let x: i8 = 3
 ```
 
 Type declaration is not required; we infer the type when needed. Default numeric type is `i64`
+
+## Control Flow
+
+### If
+`if` is an expression, so it can evaluate to a value or just be used for side effects.
+
+```vl
+let a = if true { 100 } else { 50 }
+
+if true { print("is true") } else { print("is false") }
+```
