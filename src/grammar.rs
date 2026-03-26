@@ -11,6 +11,12 @@ pub struct TypeBinding {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Expr {
+    Block(Vec<Stmt>),
+    If {
+        condition: Box<Expr>,
+        then_branch: Box<Expr>,
+        else_branch: Option<Box<Expr>>,
+    },
     Call(Box<Expr>, Vec<Expr>),
     Negate(Box<Expr>),
     Number(NumericKind),
@@ -24,13 +30,15 @@ pub enum Expr {
     Var(String),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Stmt {
     ExprStmt(Expr),
     Let(String, Expr, bool, Option<TypeKind>),
     Print(Expr),
+    Return(Expr),
     Reassign(String, Expr),
 }
+
 #[derive(Clone, Debug)]
 pub struct FnDecl {
     pub name: String,
@@ -66,8 +74,11 @@ pub enum Token {
     Assign,
     Bool(bool),
     Colon,
+    Else,
     Equals,
     Ident(String),
+    If,
+    LBrace,
     Let,
     LParen,
     Minus,
@@ -76,6 +87,8 @@ pub enum Token {
     NumberLiteral(String),
     Plus,
     Print,
+    RBrace,
+    Return,
     RParen,
     Slash,
     Star,
@@ -95,6 +108,7 @@ pub enum TypeKind {
     U16,
     U32,
     U64,
+    Unit,
     F32,
     F64,
 }

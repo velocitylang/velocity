@@ -64,8 +64,31 @@ fn format_effect_inst(inst: &EffectInst) -> String {
         EffectInst::Return { value } => match value {
             Some(v) => format!("return {}", format_value_id(*v)),
             None => "return".to_string(),
-        },
-        _ => panic!("Effect instruction '{:?}' not implemented yet", inst)
+        }
+        EffectInst::Branch {
+            cond,
+            then_block,
+            then_args,
+            else_block,
+            else_args,
+        } => {
+            let then_args_str = format_block_args(then_args);
+            let else_args_str = format_block_args(else_args);
+
+            format!(
+                "branch {}, b{}{}, b{}{}",
+                format_value_id(*cond),
+                then_block.0,
+                then_args_str,
+                else_block.0,
+                else_args_str
+            )
+        }
+
+        EffectInst::Jump { target, args } => {
+            let args_str = format_block_args(args);
+            format!("jump b{}{}", target.0, args_str)
+        }
     }
 }
 
@@ -93,6 +116,19 @@ fn format_constant(value: &Constant) -> String {
     }
 }
 
+fn format_block_args(args: &[ValueId]) -> String {
+    if args.is_empty() {
+        String::new()
+    } else {
+        let joined = args
+            .iter()
+            .map(|a| format_value_id(*a))
+            .collect::<Vec<_>>()
+            .join(", ");
+        format!("[{}]", joined)
+    }
+}
+
 fn format_type(ty: &TypeKind) -> &'static str {
     match ty {
         TypeKind::I8 => "i8",
@@ -103,6 +139,7 @@ fn format_type(ty: &TypeKind) -> &'static str {
         TypeKind::U16 => "u16",
         TypeKind::U32 => "u32",
         TypeKind::U64 => "u64",
+        TypeKind::Unit => "unit",
         TypeKind::F32 => "f32",
         TypeKind::F64 => "f64",
         TypeKind::Bool => "bool",

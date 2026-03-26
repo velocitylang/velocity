@@ -21,26 +21,6 @@ impl Parser {
         token
     }
 
-    fn infer_type(&self, expr: &Expr) -> TypeKind {
-        match expr {
-            Expr::Negate(inner) => {
-                let ty = self.infer_type(inner);
-
-                match ty {
-                    TypeKind::I8 | TypeKind::I16 | TypeKind::I32 | TypeKind::I64 |
-                    TypeKind::F32 | TypeKind::F64 => ty,
-                    TypeKind::U8 | TypeKind::U16 | TypeKind::U32 | TypeKind::U64 =>
-                        panic!("Cannot negate unsigned type {:?}", ty),
-                    _ => panic!("Cannot negate {:?}", ty),
-                }
-            },
-            Expr::String(_) => TypeKind::String,
-            Expr::Bool(_) => TypeKind::Bool,
-            Expr::NumberLiteral(_) => TypeKind::I64,
-            _ => panic!("Cannot infer type for {:?}", expr),
-        }
-    }
-
     pub fn parse_stmt(&mut self) -> Stmt {
         let token = self.peek();
 
@@ -55,6 +35,7 @@ impl Parser {
                 }
             }
             Some(Token::Assign) => self.parse_assign_stmt(),
+            Some(Token::Return) => Stmt::Return(self.parse_expr()),
             _ => Stmt::ExprStmt(self.parse_expr()),
         }
     }
@@ -83,11 +64,13 @@ impl Parser {
 
             if matches!(self.peek(), Some(Token::Assign)) {
                 self.consume();
-                let right = self.parse_expr();
-                if ty == None {
-                    ty = Some(self.infer_type(&right));
-                }
-                return Stmt::Let(name, right, mutable, ty);
+                let right = if matches!(self.peek(), Some(Token::If)) {
+                    self.parse_if_expr()
+                } else {
+                    self.parse_expr()
+                };
+
+                Stmt::Let(name, right, mutable, ty)
             } else {
                 panic!("Expected assign (=) in let statement");
             }
@@ -109,6 +92,45 @@ impl Parser {
         }
 
         Stmt::ExprStmt(self.parse_expr())
+    }
+    
+    fn parse_if_expr(&mut self) -> Expr {
+        self.consume(); // if
+        let condition = Box::new(self.parse_expr());
+        let then_branch = Box::new(self.parse_block_expr());
+
+        let else_branch = if matches!(self.peek(), Some(Token::Else)) {
+            self.consume(); // else
+            if matches!(self.peek(), Some(Token::If)) {
+                Some(Box::new(self.parse_if_expr()))
+            } else {
+                Some(Box::new(self.parse_block_expr()))
+            }
+        } else {
+            None
+        };
+
+        Expr::If {
+            condition,
+            then_branch,
+            else_branch,
+        }
+    }
+
+    fn parse_block_expr(&mut self) -> Expr {
+        let mut stmts: Vec<Stmt> = Vec::new();
+
+        self.consume(); // {
+
+        while !matches!(self.peek(), Some(Token::RBrace)) {
+            let stmt = self.parse_stmt();
+
+            stmts.push(stmt);
+        }
+
+        self.consume(); // }
+
+        Expr::Block(stmts)
     }
 
     fn parse_expr(&mut self) -> Expr {
@@ -164,6 +186,9 @@ impl Parser {
             Some(Token::String(s)) => Expr::String(s.clone()),
             Some(Token::Bool(b)) => Expr::Bool(*b),
             Some(Token::Ident(name)) => Expr::Var(name.clone()),
+            Some(Token::If) => self.parse_if_expr(),
+            Some(Token::LBrace) => self.parse_block_expr(),
+            Some(Token::Return) => self.parse_expr(),
             _ => panic!("Expected a number, but found {:?}", token),
         }
     }

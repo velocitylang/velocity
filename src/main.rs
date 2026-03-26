@@ -42,10 +42,10 @@ fn main() {
 
         println!("AST is: {:?}\n", ast);
 
-        for item in &ast.items {
+        for item in &mut ast.items {
             match item {
                 Item::Stmt(stmt) => {
-                    check_stmt_types(&stmt, &mut env);
+                    check_stmt_types(stmt, &mut env);
                 },
                 Item::Function(_fnct) => {
                     // check function types

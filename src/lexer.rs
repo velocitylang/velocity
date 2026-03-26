@@ -21,6 +21,8 @@ pub fn get_next_token(chars: &mut Peekable<Chars>) -> Option<Token> {
         Some('=') => Some(Token::Assign),
         Some('(') => Some(Token::LParen),
         Some(')') => Some(Token::RParen),
+        Some('{') => Some(Token::LBrace),
+        Some('}') => Some(Token::RBrace),
         Some(':') => Some(Token::Colon),
         Some('"') => {
             let mut value = String::new();
@@ -68,6 +70,9 @@ pub fn get_next_token(chars: &mut Peekable<Chars>) -> Option<Token> {
             tokens.insert("true", Token::Bool(true));
             tokens.insert("false", Token::Bool(false));
             tokens.insert("print", Token::Print);
+            tokens.insert("if", Token::If);
+            tokens.insert("else", Token::Else);
+            tokens.insert("return", Token::Return);
             tokens.insert("string", Token::Type(TypeKind::String));
             tokens.insert("bool", Token::Type(TypeKind::Bool));
             tokens.insert("i8", Token::Type(TypeKind::I8));
