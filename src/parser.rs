@@ -36,6 +36,7 @@ impl Parser {
             }
             Some(Token::Assign) => self.parse_assign_stmt(),
             Some(Token::Return) => Stmt::Return(self.parse_expr()),
+            Some(Token::If) => Stmt::ExprStmt(self.parse_if_expr()),
             _ => Stmt::ExprStmt(self.parse_expr()),
         }
     }
@@ -189,7 +190,7 @@ impl Parser {
             Some(Token::If) => self.parse_if_expr(),
             Some(Token::LBrace) => self.parse_block_expr(),
             Some(Token::Return) => self.parse_expr(),
-            _ => panic!("Expected a number, but found {:?}", token),
+            _ => panic!("Unexpected token {:?}", token),
         }
     }
 
