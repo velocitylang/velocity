@@ -88,7 +88,7 @@ let stuff: [4] = [1, 2, 3, 4]
 
 ## Tuples
 
-Tuples can have mixed-type collections. Note that you don't define a type for tuple items, since they can be of mixed types.
+Tuples can have mixed-type collections. Note that, for this reason, you don't define a type for tuple items.
 
 Strict immutability is enforced for tuples. Meaning that if you want to add, change, or remove items, you need to declare with `mut`.
 
