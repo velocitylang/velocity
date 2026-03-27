@@ -39,6 +39,7 @@ Supported types are:
 - f32, f64
 - string
 - bool
+- [] (array)
 
 ```vl
 let x: i8 = 3
@@ -55,4 +56,30 @@ Type declaration is not required; we infer the type when needed. The default num
 let a = if true { 100 } else { 50 }
 
 if true { print("is true") } else { print("is false") }
+```
+
+## Arrays
+
+Strict immutability is enforced for arrays. Meaning that if you want to add, change, or remove items, you need to declare with `mut`.
+
+### Dynamic
+
+```vl
+let sizes: i64[] = [0, 7, 12]
+
+// Types are inferred if omitted
+// Here, we're inferring an array of `string`s
+let groups = ["beginner", "intermediate", "advanced"]
+```
+
+### Fixed
+
+To create a fixed-size array, declare the number of items it will hold, surrounded by brackets, with the type declaration.
+
+```vl
+let things: string[3] = ["hat", "gloves", "coat"]
+
+// As with dynamic arrays, type is inferred if omitted
+// Here, we're declaring it's an array of 4 items, and we infer `i64` for the items
+let stuff: [4] = [1, 2, 3, 4]
 ```
