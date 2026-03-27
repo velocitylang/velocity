@@ -1,14 +1,11 @@
 # Velocity
 
-A deterministic, AI-first programming language.
+The vision for this AI-first language is to be fast and deterministic, with first-class citizens such as:
 
-I have no idea how far this is going to go. I'm writing this on March 8th, 2026. I started building this language, solely with AI, a week ago. There were over 33k lines of code, excluding the test suite, and I had no idea what the hell was going on. I burned it; burned it all.
-
-It would be awesome to build a new language that is intended for artificial intelligence and machine learning, and hopefully adaptive enough for whatever comes next. It should guarantee determinism, provide great syntax, and be fast.
-
-If you're interested in coming along for the ride, and you know Rust and/or the innerworkings of AI and ML, hit me up on X @j4w8n or Bluesky @j4w8n.com
-
-Right now, I'm off to see if I can get a simple lexer, AST, and compiler working - with only minor help from AI.
+- tensors
+- shapes
+- gradients
+- kernels
 
 ## Intro
 
@@ -47,7 +44,7 @@ Supported types are:
 let x: i8 = 3
 ```
 
-Type declaration is not required; we infer the type when needed. Default numeric type is `i64`
+Type declaration is not required; we infer the type when needed. The default numeric type is `i64`
 
 ## Control Flow
 
