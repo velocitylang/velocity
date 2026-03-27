@@ -60,6 +60,8 @@ if true { print("is true") } else { print("is false") }
 
 ## Arrays
 
+Arrays must have all items be of the same type.
+
 Strict immutability is enforced for arrays. Meaning that if you want to add, change, or remove items, you need to declare with `mut`.
 
 ### Dynamic
@@ -82,4 +84,24 @@ let things: string[3] = ["hat", "gloves", "coat"]
 // As with dynamic arrays, type is inferred if omitted
 // Here, we're declaring it's an array of 4 items, and we infer `i64` for the items
 let stuff: [4] = [1, 2, 3, 4]
+```
+
+## Tuples
+
+Tuples can have mixed-type collections. Note that you don't define a type for tuple items, since they can be of mixed types.
+
+Strict immutability is enforced for tuples. Meaning that if you want to add, change, or remove items, you need to declare with `mut`.
+
+### Dynamic
+
+```vl
+let data = (1, "three", false)
+```
+
+### Fixed
+
+To create a fixed-size tuple, declare the number of items it will hold, surrounded by parenthesis.
+
+```vl
+let things: (3) = ["hat", "gloves", "coat"]
 ```
