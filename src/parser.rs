@@ -1,4 +1,4 @@
-use crate::{grammar::{Expr, Stmt, Token, TypeKind}};
+use crate::grammar::{Expr, Stmt, Token, TypeKind};
 
 pub struct Parser {
     pub tokens: Vec<Token>,
@@ -13,12 +13,30 @@ impl Parser {
         self.tokens.get(self.pos + offset)
     }
 
-    fn consume(&mut self) -> Option<&Token> {
-        let token = self.tokens.get(self.pos);
+    fn consume(&mut self) -> Option<Token> {
+        let token = self.tokens.get(self.pos).cloned();
         if token.is_some() {
             self.pos += 1;
         }
         token
+    }
+
+    fn type_from_ident(&mut self, name: &str) -> Option<TypeKind> {
+        match name {
+            "string" => Some(TypeKind::String),
+            "bool" => Some(TypeKind::Bool),
+            "i8" => Some(TypeKind::I8),
+            "i16" => Some(TypeKind::I16),
+            "i32" => Some(TypeKind::I32),
+            "i64" => Some(TypeKind::I64),
+            "u8" => Some(TypeKind::U8),
+            "u16" => Some(TypeKind::U16),
+            "u32" => Some(TypeKind::U32),
+            "u64" => Some(TypeKind::U64),
+            "f32" => Some(TypeKind::F32),
+            "f64" => Some(TypeKind::F64),
+            _ => None,
+        }
     }
 
     pub fn parse_stmt(&mut self) -> Stmt {
@@ -57,18 +75,54 @@ impl Parser {
 
             if matches!(self.peek(), Some(Token::Colon)) {
                 self.consume();
-                ty = match self.consume() {
-                    Some(Token::Type(t)) => Some(t.clone()),
-                    _ => None,
-                }
+
+                match self.consume() {
+                    Some(Token::Ident(name)) => {
+                        //self.consume();
+                        let base_ty = self.type_from_ident(&name);
+
+                        if matches!(self.peek(), Some(Token::LBracket)) {
+                            self.consume();
+                            if matches!(self.peek(), Some(Token::RBracket)) {
+                                self.consume();
+                                ty = Some(TypeKind::Array(Box::new(base_ty.unwrap())));
+                            } else {
+                                let size = match self.consume() {
+                                    Some(Token::NumberLiteral(s)) => s.parse::<usize>().unwrap_or_else(|_| panic!("Expected valid usize for array size, got {}", s)),
+                                    other => panic!("Expected number for array size, got {:?}", other),
+                                };
+
+                                ty = Some(TypeKind::FixedArray(Box::new(base_ty.unwrap()), size));
+                                self.consume();
+                            }
+                        }
+                    },
+                    Some(Token::LBracket) => {
+                        //self.consume();
+                        if matches!(self.peek(), Some(Token::RBracket)) {
+                            self.consume();
+                            ty = Some(TypeKind::Array(Box::new(TypeKind::Unit)));
+                        } else {
+                            let size = match self.consume() {
+                                Some(Token::NumberLiteral(s)) => s.parse::<usize>().unwrap_or_else(|_| panic!("Expected valid usize for array size, got {}", s)),
+                                other => panic!("Expected number for array size, got {:?}", other),
+                            };
+
+                            ty = Some(TypeKind::FixedArray(Box::new(TypeKind::Unit), size));
+                            self.consume();
+                        }
+                    },
+                    _ => panic!("Colon must be followed by a type and/or fixed-size annotation.")
+                };
             }
 
             if matches!(self.peek(), Some(Token::Assign)) {
                 self.consume();
-                let right = if matches!(self.peek(), Some(Token::If)) {
-                    self.parse_if_expr()
-                } else {
-                    self.parse_expr()
+
+                let right = match self.peek() {
+                    Some(Token::If) => self.parse_if_expr(),
+                    Some(Token::LBracket) => self.parse_array_expr(),
+                    _ => self.parse_expr()
                 };
 
                 Stmt::Let(name, right, mutable, ty)
@@ -116,6 +170,23 @@ impl Parser {
             then_branch,
             else_branch,
         }
+    }
+    
+    fn parse_array_expr(&mut self) -> Expr {
+        let mut items: Vec<Expr> = Vec::new();
+        self.consume(); // LBracket
+
+        while !matches!(self.peek(), Some(Token::RBracket)) {
+            let token = self.peek();
+
+            match token {
+                Some(Token::Comma) => { self.consume(); },
+                _ => items.push(self.parse_expr()),
+            }
+        }
+
+        self.consume(); // RBracket
+        Expr::Array(items)
     }
 
     fn parse_block_expr(&mut self) -> Expr {
@@ -185,10 +256,11 @@ impl Parser {
             }
             Some(Token::NumberLiteral(n)) => Expr::NumberLiteral(n.clone()),
             Some(Token::String(s)) => Expr::String(s.clone()),
-            Some(Token::Bool(b)) => Expr::Bool(*b),
+            Some(Token::Bool(b)) => Expr::Bool(b),
             Some(Token::Ident(name)) => Expr::Var(name.clone()),
             Some(Token::If) => self.parse_if_expr(),
             Some(Token::LBrace) => self.parse_block_expr(),
+            Some(Token::LBracket) => self.parse_expr(),
             Some(Token::Return) => self.parse_expr(),
             _ => panic!("Unexpected token {:?}", token),
         }

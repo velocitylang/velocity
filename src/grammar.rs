@@ -11,6 +11,7 @@ pub struct TypeBinding {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Expr {
+    Array(Vec<Expr>),
     Block(Vec<Stmt>),
     If {
         condition: Box<Expr>,
@@ -74,11 +75,13 @@ pub enum Token {
     Assign,
     Bool(bool),
     Colon,
+    Comma,
     Else,
     Equals,
     Ident(String),
     If,
     LBrace,
+    LBracket,
     Let,
     LParen,
     Minus,
@@ -88,6 +91,7 @@ pub enum Token {
     Plus,
     Print,
     RBrace,
+    RBracket,
     Return,
     RParen,
     Slash,
@@ -98,6 +102,8 @@ pub enum Token {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum TypeKind {
+    Array(Box<TypeKind>),
+    FixedArray(Box<TypeKind>, usize),
     String,
     Bool,
     I8,

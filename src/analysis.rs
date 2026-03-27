@@ -2,6 +2,44 @@ use crate::grammar::{Expr, Stmt, TypeBinding, TypeEnv, TypeKind};
 
 fn infer_type(expr: &Expr, env: &TypeEnv, expected: Option<&TypeKind>) -> TypeKind {
     match expr {
+        Expr::Array(items) => {
+            if items.is_empty() {
+                panic!("Cannot infer type of empty array");
+            }
+
+            let expected_elem_ty = match expected {
+                Some(TypeKind::FixedArray(elem_ty, size)) => {
+                    if *size != items.len() {
+                        panic!(
+                            "Expected array of size {}, found array of size {}",
+                            size,
+                            items.len()
+                        );
+                    }
+                    Some(elem_ty.as_ref())
+                }
+                Some(other) => panic!("Expected array type, got {:?}", other),
+                None => None,
+            };
+
+            let first_item_ty = infer_type(&items[0], env, expected_elem_ty);
+
+            for item in &items[1..] {
+                let item_ty = infer_type(item, env, expected_elem_ty);
+                if item_ty != first_item_ty {
+                    panic!(
+                        "Array items must be the same type. Should be {:?} but found {:?}",
+                        first_item_ty, item_ty
+                    );
+                }
+            }
+
+            if expected_elem_ty == None {
+                return TypeKind::Array(Box::new(first_item_ty))
+            } else {
+                return TypeKind::FixedArray(Box::new(first_item_ty), items.len())
+            }
+        }
         Expr::If { condition, then_branch, else_branch } => {
             let cond_ty = infer_type(condition, env, Some(&TypeKind::Bool));
             if cond_ty != TypeKind::Bool {
@@ -55,25 +93,69 @@ fn infer_type(expr: &Expr, env: &TypeEnv, expected: Option<&TypeKind>) -> TypeKi
         },
         Expr::String(_) => TypeKind::String,
         Expr::Bool(_) => TypeKind::Bool,
-        Expr::NumberLiteral(n) => {
-            match expected {
-                Some(ty) => {
-                    match ty {
-                        TypeKind::I8 => { n.parse::<i8>().expect(&format!("'{n}' does not fit in i8")); },
-                        TypeKind::I16 => { n.parse::<i16>().expect(&format!("'{n}' does not fit in i16")); },
-                        TypeKind::I32 => { n.parse::<i32>().expect(&format!("'{n}' does not fit in i32")); },
-                        TypeKind::I64 => { n.parse::<i64>().expect(&format!("'{n}' does not fit in i64")); },
-                        TypeKind::U8 => { n.parse::<u8>().expect(&format!("'{n}' does not fit in u8")); },
-                        TypeKind::U16 => { n.parse::<u16>().expect(&format!("'{n}' does not fit in u16")); },
-                        TypeKind::U32 => { n.parse::<u32>().expect(&format!("'{n}' does not fit in u32")); },
-                        TypeKind::U64 => { n.parse::<u64>().expect(&format!("'{n}' does not fit in u64")); },
-                        TypeKind::F32 => { n.parse::<f32>().expect(&format!("'{n}' does not fit in f32")); },
-                        TypeKind::F64 => { n.parse::<f64>().expect(&format!("'{n}' does not fit in f64")); },
-                        _ => panic!("Expected numeric type, got {:?}", ty),
-                    }
-                    ty.clone()
-                },
-                None => TypeKind::I64,
+        Expr::NumberLiteral(n) => match expected {
+            Some(ty) => match ty {
+                TypeKind::I8 => {
+                    n.parse::<i8>()
+                        .unwrap_or_else(|_| panic!("'{n}' does not fit in i8"));
+                    TypeKind::I8
+                }
+                TypeKind::I16 => {
+                    n.parse::<i16>()
+                        .unwrap_or_else(|_| panic!("'{n}' does not fit in i16"));
+                    TypeKind::I16
+                }
+                TypeKind::I32 => {
+                    n.parse::<i32>()
+                        .unwrap_or_else(|_| panic!("'{n}' does not fit in i32"));
+                    TypeKind::I32
+                }
+                TypeKind::I64 => {
+                    n.parse::<i64>()
+                        .unwrap_or_else(|_| panic!("'{n}' does not fit in i64"));
+                    TypeKind::I64
+                }
+                TypeKind::U8 => {
+                    n.parse::<u8>()
+                        .unwrap_or_else(|_| panic!("'{n}' does not fit in u8"));
+                    TypeKind::U8
+                }
+                TypeKind::U16 => {
+                    n.parse::<u16>()
+                        .unwrap_or_else(|_| panic!("'{n}' does not fit in u16"));
+                    TypeKind::U16
+                }
+                TypeKind::U32 => {
+                    n.parse::<u32>()
+                        .unwrap_or_else(|_| panic!("'{n}' does not fit in u32"));
+                    TypeKind::U32
+                }
+                TypeKind::U64 => {
+                    n.parse::<u64>()
+                        .unwrap_or_else(|_| panic!("'{n}' does not fit in u64"));
+                    TypeKind::U64
+                }
+                TypeKind::F32 => {
+                    n.parse::<f32>()
+                        .unwrap_or_else(|_| panic!("'{n}' does not fit in f32"));
+                    TypeKind::F32
+                }
+                TypeKind::F64 => {
+                    n.parse::<f64>()
+                        .unwrap_or_else(|_| panic!("'{n}' does not fit in f64"));
+                    TypeKind::F64
+                }
+                TypeKind::Unit => {
+                    n.parse::<i64>()
+                        .unwrap_or_else(|_| panic!("'{n}' does not fit in i64"));
+                    TypeKind::I64
+                }
+                _ => panic!("Expected numeric type, got {:?}", ty),
+            },
+            None => {
+                n.parse::<i64>()
+                    .unwrap_or_else(|_| panic!("'{n}' does not fit in i64"));
+                TypeKind::I64
             }
         },
         Expr::Var(name) => env.idents.get(name)
@@ -134,19 +216,21 @@ pub fn check_stmt_types(stmt: &mut Stmt, env: &mut TypeEnv) {
 
             let inferred_type = infer_type(expr, env, ty.as_ref());
 
-            if ty.is_none() {
-                *ty = Some(inferred_type.clone());
-            }
+            let final_type = match ty.as_ref() {
+                Some(declared) => resolve_declared_type(declared, &inferred_type),
+                None => inferred_type,
+            };
 
-            if let Some(t) = ty {
-                if inferred_type != *t {
-                    panic!("Value for {:?} does not match declared type {:?}", ident, t);
-                }
-                env.idents.insert(ident.to_string(), TypeBinding { ty: t.clone(), mutable: *mutable });
-            } else {
-                env.idents.insert(ident.to_string(), TypeBinding { ty: inferred_type, mutable: *mutable });
-            }
-        },
+            *ty = Some(final_type.clone());
+
+            env.idents.insert(
+                ident.to_string(),
+                TypeBinding {
+                    ty: final_type,
+                    mutable: *mutable,
+                },
+            );
+        }
         Stmt::Print(expr) => {
             infer_type(&expr, env, None);
         },
@@ -169,6 +253,35 @@ pub fn check_stmt_types(stmt: &mut Stmt, env: &mut TypeEnv) {
         },
         Stmt::Return(expr) => {
             infer_type(&expr, env, None);
+        }
+    }
+}
+
+fn resolve_declared_type(declared: &TypeKind, inferred: &TypeKind) -> TypeKind {
+    match (declared, inferred) {
+        (TypeKind::Unit, other) => other.clone(),
+
+        (TypeKind::FixedArray(decl_elem, decl_size), TypeKind::FixedArray(inf_elem, inf_size)) => {
+            if decl_size != inf_size {
+                panic!(
+                    "Array size mismatch: declared {:?}, inferred {:?}",
+                    declared, inferred
+                );
+            }
+
+            TypeKind::FixedArray(
+                Box::new(resolve_declared_type(decl_elem, inf_elem)),
+                *decl_size,
+            )
+        }
+
+        (a, b) if a == b => a.clone(),
+
+        _ => {
+            panic!(
+                "Declared type {:?} does not match inferred type {:?}",
+                declared, inferred
+            );
         }
     }
 }

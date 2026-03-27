@@ -38,6 +38,12 @@ fn format_value_inst_kind(kind: &ValueInstKind) -> String {
         ValueInstKind::Const { value } => {
             format!("const {}", format_constant(value))
         }
+        ValueInstKind::FixedArray { items } => {
+            format!("fixedarray {}", format_value_list(items))
+        }
+        ValueInstKind::Array { items } => {
+            format!("array {}", format_value_list(items))
+        }
         ValueInstKind::Add { lhs, rhs } => {
             format!("add {}, {}", format_value_id(*lhs), format_value_id(*rhs))
         }
@@ -120,29 +126,35 @@ fn format_block_args(args: &[ValueId]) -> String {
     if args.is_empty() {
         String::new()
     } else {
-        let joined = args
-            .iter()
-            .map(|a| format_value_id(*a))
-            .collect::<Vec<_>>()
-            .join(", ");
-        format!("[{}]", joined)
+        format_value_list(args)
     }
 }
 
-fn format_type(ty: &TypeKind) -> &'static str {
+fn format_value_list(values: &[ValueId]) -> String {
+    let joined = values
+        .iter()
+        .map(|a| format_value_id(*a))
+        .collect::<Vec<_>>()
+        .join(", ");
+    format!("[{}]", joined)
+}
+
+fn format_type(ty: &TypeKind) -> String {
     match ty {
-        TypeKind::I8 => "i8",
-        TypeKind::I16 => "i16",
-        TypeKind::I32 => "i32",
-        TypeKind::I64 => "i64",
-        TypeKind::U8 => "u8",
-        TypeKind::U16 => "u16",
-        TypeKind::U32 => "u32",
-        TypeKind::U64 => "u64",
-        TypeKind::Unit => "unit",
-        TypeKind::F32 => "f32",
-        TypeKind::F64 => "f64",
-        TypeKind::Bool => "bool",
-        TypeKind::String => "string",
+        TypeKind::I8 => "i8".to_string(),
+        TypeKind::I16 => "i16".to_string(),
+        TypeKind::I32 => "i32".to_string(),
+        TypeKind::I64 => "i64".to_string(),
+        TypeKind::U8 => "u8".to_string(),
+        TypeKind::U16 => "u16".to_string(),
+        TypeKind::U32 => "u32".to_string(),
+        TypeKind::U64 => "u64".to_string(),
+        TypeKind::Unit => "unit".to_string(),
+        TypeKind::F32 => "f32".to_string(),
+        TypeKind::F64 => "f64".to_string(),
+        TypeKind::Bool => "bool".to_string(),
+        TypeKind::String => "string".to_string(),
+        TypeKind::Array(elem) => format!("{}[]", format_type(elem)),
+        TypeKind::FixedArray(elem, size) => format!("{}[{}]", format_type(elem), size),
     }
 }

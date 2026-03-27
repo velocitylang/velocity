@@ -130,6 +130,34 @@ impl VirFunction {
         ValueId::Inst(id)
     }
 
+    pub fn emit_fixed_array(
+        &mut self,
+        block: BlockId,
+        items: Vec<ValueId>,
+        ty: TypeKind,
+    ) -> ValueId {
+        let inst = Inst::Value(ValueInst {
+            kind: ValueInstKind::FixedArray { items },
+            ty,
+        });
+        let id = self.append_inst(block, inst);
+        ValueId::Inst(id)
+    }
+
+    pub fn emit_array(
+        &mut self,
+        block: BlockId,
+        items: Vec<ValueId>,
+        ty: TypeKind,
+    ) -> ValueId {
+        let inst = Inst::Value(ValueInst {
+            kind: ValueInstKind::Array { items },
+            ty,
+        });
+        let id = self.append_inst(block, inst);
+        ValueId::Inst(id)
+    }
+
     pub fn emit_print(&mut self, block: BlockId, value: ValueId) -> InstId {
         self.append_inst(
             block, 
@@ -205,6 +233,8 @@ pub struct ValueInst {
 #[derive(Clone, Debug)]
 pub enum ValueInstKind {
     Const { value: Constant },
+    FixedArray { items: Vec<ValueId> },
+    Array { items: Vec<ValueId> },
     Add { lhs: ValueId, rhs: ValueId },
     Sub { lhs: ValueId, rhs: ValueId },
     Mul { lhs: ValueId, rhs: ValueId },
@@ -550,6 +580,10 @@ fn lower_expr_to_vir(ctx: &mut LowerCtx<'_>, expr: &Expr, expected_ty: Option<&T
             lower_block_expr_to_vir(ctx, stmts, expected_ty)
         }
 
+        Expr::Array(exprs) => {
+            lower_array_expr_to_vir(ctx, exprs, expected_ty)
+        }
+
         _ => todo!("lower_expr_to_vir for {:?}", expr),
     }
 }
@@ -637,6 +671,36 @@ fn lower_block_expr_to_vir(
     }
 
     last_value
+}
+
+fn lower_array_expr_to_vir(
+    ctx: &mut LowerCtx<'_>,
+    exprs: &[Expr],
+    expected_ty: Option<&TypeKind>,
+) -> ValueId {
+    let expected_ty = expected_ty
+        .unwrap_or_else(|| panic!("array literal lowering requires an expected type"));
+
+    match expected_ty {
+        TypeKind::FixedArray(elem_ty, _) => {
+            let items = exprs
+                .iter()
+                .map(|expr| lower_expr_to_vir(ctx, expr, Some(elem_ty.as_ref())))
+                .collect::<Vec<_>>();
+
+            ctx.func
+                .emit_fixed_array(ctx.current_block, items, expected_ty.clone())
+        }
+        TypeKind::Array(elem_ty) => {
+            let items = exprs
+                .iter()
+                .map(|expr| lower_expr_to_vir(ctx, expr, Some(elem_ty.as_ref())))
+                .collect::<Vec<_>>();
+
+            ctx.func.emit_array(ctx.current_block, items, expected_ty.clone())
+        }
+        other => panic!("expected array type for array literal lowering, got {:?}", other),
+    }
 }
 
 pub fn parse_number_literal(text: &str, ty: &TypeKind) -> Constant {
@@ -834,6 +898,40 @@ fn verify_value_inst(
             }
         }
 
+        ValueInstKind::FixedArray { items } => match &inst.ty {
+            TypeKind::FixedArray(elem_ty, size) => {
+                if items.len() != *size {
+                    return Err(format!(
+                        "instruction {:?} stores {} array items, but result type {:?} expects {}",
+                        inst_id,
+                        items.len(),
+                        inst.ty,
+                        size
+                    ));
+                }
+
+                verify_array_items(func, inst_id, items, elem_ty.as_ref())?;
+            }
+            other => {
+                return Err(format!(
+                    "instruction {:?} is fixed-array construction but has result type {:?}",
+                    inst_id, other
+                ));
+            }
+        },
+
+        ValueInstKind::Array { items } => match &inst.ty {
+            TypeKind::Array(elem_ty) => {
+                verify_array_items(func, inst_id, items, elem_ty.as_ref())?;
+            }
+            other => {
+                return Err(format!(
+                    "instruction {:?} is dynamic-array construction but has result type {:?}",
+                    inst_id, other
+                ));
+            }
+        },
+
         ValueInstKind::Add { lhs, rhs }
         | ValueInstKind::Sub { lhs, rhs }
         | ValueInstKind::Mul { lhs, rhs }
@@ -882,6 +980,25 @@ fn verify_value_inst(
                     inst_id, value_ty
                 ));
             }
+        }
+    }
+
+    Ok(())
+}
+
+fn verify_array_items(
+    func: &VirFunction,
+    inst_id: InstId,
+    items: &[ValueId],
+    elem_ty: &TypeKind,
+) -> Result<(), String> {
+    for item in items {
+        let item_ty = value_ty_checked(func, *item)?;
+        if item_ty != elem_ty {
+            return Err(format!(
+                "instruction {:?} stores array item of type {:?}, expected {:?}",
+                inst_id, item_ty, elem_ty
+            ));
         }
     }
 
