@@ -98,7 +98,6 @@ impl Parser {
                         }
                     },
                     Some(Token::LBracket) => {
-                        //self.consume();
                         if matches!(self.peek(), Some(Token::RBracket)) {
                             self.consume();
                             ty = Some(TypeKind::Array(Box::new(TypeKind::Unit)));
@@ -111,6 +110,15 @@ impl Parser {
                             ty = Some(TypeKind::FixedArray(Box::new(TypeKind::Unit), size));
                             self.consume();
                         }
+                    },
+                    Some(Token::LParen) => {
+                        let size = match self.consume() {
+                            Some(Token::NumberLiteral(s)) => s.parse::<usize>().unwrap_or_else(|_| panic!("Expected valid usize for tuple size, got {}", s)),
+                            other => panic!("Expected number for tuple size, got {:?}", other),
+                        };
+
+                        ty = Some(TypeKind::FixedTuple(size));
+                        self.consume();
                     },
                     _ => panic!("Colon must be followed by a type and/or fixed-size annotation.")
                 };
@@ -189,6 +197,33 @@ impl Parser {
         Expr::Array(items)
     }
 
+    fn parse_tuple_expr_after_lparen(&mut self) -> Expr {
+        let mut items: Vec<Expr> = Vec::new();
+
+        if matches!(self.peek(), Some(Token::RParen)) {
+            panic!("Empty tuple syntax is not supported");
+        }
+
+        items.push(self.parse_expr());
+
+        if matches!(self.peek(), Some(Token::RParen)) {
+            self.consume(); // RParen
+            return items.into_iter().next().unwrap();
+        }
+
+        while !matches!(self.peek(), Some(Token::RParen)) {
+            let token = self.peek();
+
+            match token {
+                Some(Token::Comma) => { self.consume(); },
+                _ => items.push(self.parse_expr()),
+            }
+        }
+
+        self.consume(); // RParen
+        Expr::Tuple(items)
+    }
+
     fn parse_block_expr(&mut self) -> Expr {
         let mut stmts: Vec<Stmt> = Vec::new();
 
@@ -260,6 +295,7 @@ impl Parser {
             Some(Token::Ident(name)) => Expr::Var(name.clone()),
             Some(Token::If) => self.parse_if_expr(),
             Some(Token::LBrace) => self.parse_block_expr(),
+            Some(Token::LParen) => self.parse_tuple_expr_after_lparen(),
             Some(Token::LBracket) => self.parse_expr(),
             Some(Token::Return) => self.parse_expr(),
             _ => panic!("Unexpected token {:?}", token),

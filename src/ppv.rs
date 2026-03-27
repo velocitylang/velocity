@@ -44,6 +44,12 @@ fn format_value_inst_kind(kind: &ValueInstKind) -> String {
         ValueInstKind::Array { items } => {
             format!("array {}", format_value_list(items))
         }
+        ValueInstKind::FixedTuple { items } => {
+            format!("fixedtuple {}", format_value_list(items))
+        }
+        ValueInstKind::Tuple { items } => {
+            format!("tuple {}", format_value_list(items))
+        }
         ValueInstKind::Add { lhs, rhs } => {
             format!("add {}, {}", format_value_id(*lhs), format_value_id(*rhs))
         }
@@ -156,5 +162,7 @@ fn format_type(ty: &TypeKind) -> String {
         TypeKind::String => "string".to_string(),
         TypeKind::Array(elem) => format!("{}[]", format_type(elem)),
         TypeKind::FixedArray(elem, size) => format!("{}[{}]", format_type(elem), size),
+        TypeKind::Tuple => "tuple".to_string(),
+        TypeKind::FixedTuple(size) => format!("fixedtuple({})", size),
     }
 }

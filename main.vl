@@ -28,4 +28,10 @@ print(arr_f)
 
 let arr_fi: [3] = [10, 20, 30]
 
+let tup = (1, "two", true)
+
+let tupt: (4) = ("ten", 20, 30, 40)
+
+let der = (1 + 2)
+
 print("Done!")

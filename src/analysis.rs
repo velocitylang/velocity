@@ -40,6 +40,27 @@ fn infer_type(expr: &Expr, env: &TypeEnv, expected: Option<&TypeKind>) -> TypeKi
                 return TypeKind::FixedArray(Box::new(first_item_ty), items.len())
             }
         }
+        Expr::Tuple(items) => {
+            for item in items {
+                infer_type(item, env, None);
+            }
+
+            match expected {
+                Some(TypeKind::FixedTuple(size)) => {
+                    if *size != items.len() {
+                        panic!(
+                            "Expected tuple of size {}, found tuple of size {}",
+                            size,
+                            items.len()
+                        );
+                    }
+                    return TypeKind::FixedTuple(items.len())
+                }
+                Some(TypeKind::Tuple) => return TypeKind::Tuple,
+                Some(other) => panic!("Expected tuple type, got {:?}", other),
+                None => return TypeKind::Tuple,
+            };
+        }
         Expr::If { condition, then_branch, else_branch } => {
             let cond_ty = infer_type(condition, env, Some(&TypeKind::Bool));
             if cond_ty != TypeKind::Bool {

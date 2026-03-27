@@ -158,6 +158,34 @@ impl VirFunction {
         ValueId::Inst(id)
     }
 
+    pub fn emit_fixed_tuple(
+        &mut self,
+        block: BlockId,
+        items: Vec<ValueId>,
+        ty: TypeKind,
+    ) -> ValueId {
+        let inst = Inst::Value(ValueInst {
+            kind: ValueInstKind::FixedTuple { items },
+            ty,
+        });
+        let id = self.append_inst(block, inst);
+        ValueId::Inst(id)
+    }
+
+    pub fn emit_tuple(
+        &mut self,
+        block: BlockId,
+        items: Vec<ValueId>,
+        ty: TypeKind,
+    ) -> ValueId {
+        let inst = Inst::Value(ValueInst {
+            kind: ValueInstKind::Tuple { items },
+            ty,
+        });
+        let id = self.append_inst(block, inst);
+        ValueId::Inst(id)
+    }
+
     pub fn emit_print(&mut self, block: BlockId, value: ValueId) -> InstId {
         self.append_inst(
             block, 
@@ -235,6 +263,8 @@ pub enum ValueInstKind {
     Const { value: Constant },
     FixedArray { items: Vec<ValueId> },
     Array { items: Vec<ValueId> },
+    FixedTuple { items: Vec<ValueId> },
+    Tuple { items: Vec<ValueId> },
     Add { lhs: ValueId, rhs: ValueId },
     Sub { lhs: ValueId, rhs: ValueId },
     Mul { lhs: ValueId, rhs: ValueId },
@@ -584,6 +614,10 @@ fn lower_expr_to_vir(ctx: &mut LowerCtx<'_>, expr: &Expr, expected_ty: Option<&T
             lower_array_expr_to_vir(ctx, exprs, expected_ty)
         }
 
+        Expr::Tuple(exprs) => {
+            lower_tuple_expr_to_vir(ctx, exprs, expected_ty)
+        }
+
         _ => todo!("lower_expr_to_vir for {:?}", expr),
     }
 }
@@ -700,6 +734,36 @@ fn lower_array_expr_to_vir(
             ctx.func.emit_array(ctx.current_block, items, expected_ty.clone())
         }
         other => panic!("expected array type for array literal lowering, got {:?}", other),
+    }
+}
+
+fn lower_tuple_expr_to_vir(
+    ctx: &mut LowerCtx<'_>,
+    exprs: &[Expr],
+    expected_ty: Option<&TypeKind>,
+) -> ValueId {
+    let expected_ty = expected_ty
+        .unwrap_or_else(|| panic!("tuple literal lowering requires an expected type"));
+
+    match expected_ty {
+        TypeKind::FixedTuple(_) => {
+            let items = exprs
+                .iter()
+                .map(|expr| lower_expr_to_vir(ctx, expr, None))
+                .collect::<Vec<_>>();
+
+            ctx.func
+                .emit_fixed_tuple(ctx.current_block, items, expected_ty.clone())
+        }
+        TypeKind::Tuple => {
+            let items = exprs
+                .iter()
+                .map(|expr| lower_expr_to_vir(ctx, expr, None))
+                .collect::<Vec<_>>();
+
+            ctx.func.emit_tuple(ctx.current_block, items, expected_ty.clone())
+        }
+        other => panic!("expected tuple type for tuple literal lowering, got {:?}", other),
     }
 }
 
@@ -932,6 +996,40 @@ fn verify_value_inst(
             }
         },
 
+        ValueInstKind::FixedTuple { items } => match &inst.ty {
+            TypeKind::FixedTuple(size) => {
+                if items.len() != *size {
+                    return Err(format!(
+                        "instruction {:?} stores {} tuple items, but result type {:?} expects {}",
+                        inst_id,
+                        items.len(),
+                        inst.ty,
+                        size
+                    ));
+                }
+
+                verify_tuple_items(func, inst_id, items)?;
+            }
+            other => {
+                return Err(format!(
+                    "instruction {:?} is fixed-tuple construction but has result type {:?}",
+                    inst_id, other
+                ));
+            }
+        },
+
+        ValueInstKind::Tuple { items } => match &inst.ty {
+            TypeKind::Tuple => {
+                verify_tuple_items(func, inst_id, items)?;
+            }
+            other => {
+                return Err(format!(
+                    "instruction {:?} is tuple construction but has result type {:?}",
+                    inst_id, other
+                ));
+            }
+        },
+
         ValueInstKind::Add { lhs, rhs }
         | ValueInstKind::Sub { lhs, rhs }
         | ValueInstKind::Mul { lhs, rhs }
@@ -1000,6 +1098,18 @@ fn verify_array_items(
                 inst_id, item_ty, elem_ty
             ));
         }
+    }
+
+    Ok(())
+}
+
+fn verify_tuple_items(
+    func: &VirFunction,
+    _inst_id: InstId,
+    items: &[ValueId],
+) -> Result<(), String> {
+    for item in items {
+        let _ = value_ty_checked(func, *item)?;
     }
 
     Ok(())
