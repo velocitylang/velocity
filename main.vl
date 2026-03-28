@@ -8,7 +8,7 @@ x = -1
 let mut name: string = "Jason"
 name = "Makenzie"
 
-let result: string = "Done"
+let result: string = "Done" // inline comment
 let t_bool: bool = true
 let f_bool: bool = false
 
@@ -17,6 +17,10 @@ print(total)
 let derived: i32 = x + 300
 
 let if_res = if t_bool { 100 } else { 50 }
+
+/*
+  This is a multiline comment
+*/
 
 if t_bool { print("is true") } else { print("is false") }
 
@@ -32,6 +36,7 @@ let tup = (1, "two", true)
 
 let tupt: (4) = ("ten", 20, 30, 40)
 
+// this is a comment
 let der = (1 + 2)
 
 print("Done!")

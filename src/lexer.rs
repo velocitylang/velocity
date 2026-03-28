@@ -8,6 +8,47 @@ pub fn get_next_token(chars: &mut Peekable<Chars>) -> Option<Token> {
             Some(c) if c.is_whitespace() => {
                 chars.next();
             },
+            Some('/') => {
+                let mut clone = chars.clone();
+                clone.next();
+
+                match clone.peek() {
+                    Some('/') => {
+                        // skip single-line comments
+                        chars.next(); // /
+                        chars.next(); // /
+
+                        while let Some(&next_char) = chars.peek() {
+                            if next_char == '\n' {
+                                break;
+                            }
+                            chars.next();
+                        }
+                    }
+                    Some('*') => {
+                        // skip multi-line comments
+                        chars.next(); // /
+                        chars.next(); // *
+
+                        let mut prev_was_star = false;
+                        let mut closed = false;
+
+                        while let Some(next_char) = chars.next() {
+                            if prev_was_star && next_char == '/' {
+                                closed = true;
+                                break;
+                            }
+
+                            prev_was_star = next_char == '*';
+                        }
+
+                        if !closed {
+                            panic!("Unterminated multiline comment");
+                        }
+                    }
+                    _ => break,
+                }
+            },
             _ => break,
         }
     }
