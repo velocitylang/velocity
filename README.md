@@ -31,6 +31,21 @@ You can print values or expressions.
 - `print("Hello Velocity!")`
 - `print(x + 3)`
 
+## Code Comments
+
+We support both single and multi line.
+
+```vl
+// begin cool code
+
+print("Hello Velocity!") // just wanted to say hi
+
+/*
+  nothing lasts forever
+  you knew that, right?
+*/
+```
+
 ## Types
 
 Supported types are:
