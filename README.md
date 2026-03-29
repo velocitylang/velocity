@@ -119,5 +119,5 @@ let data = (1, "three", false)
 To create a fixed-size tuple, declare the number of items it will hold, surrounded by parenthesis.
 
 ```vl
-let things: (3) = ["hat", "gloves", "coat"]
+let things: (3) = ("hat", "gloves", "coat")
 ```
