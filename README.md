@@ -22,7 +22,7 @@ You can assign numbers, strings, and booleans to identifiers.
 
 ## Math
 
-You can add, subtract numbers.
+You can add, subtract, multiply, and divide numbers.
 
 ## Printing to the console
 
@@ -55,7 +55,7 @@ Supported types are:
 - string
 - bool
 - [] (array)
-- () (tuples)
+- () (tuple)
 
 ```vl
 let x: i8 = 3
