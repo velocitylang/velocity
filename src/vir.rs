@@ -112,6 +112,24 @@ impl VirFunction {
         ValueId::Inst(id)
     }
 
+    pub fn emit_mul(&mut self, block: BlockId, lhs: ValueId, rhs: ValueId, ty: TypeKind) -> ValueId {
+        let inst = Inst::Value(ValueInst {
+            kind: ValueInstKind::Mul { lhs, rhs },
+            ty
+        });
+        let id = self.append_inst(block, inst);
+        ValueId::Inst(id)
+    }
+
+    pub fn emit_div(&mut self, block: BlockId, lhs: ValueId, rhs: ValueId, ty: TypeKind) -> ValueId {
+        let inst = Inst::Value(ValueInst {
+            kind: ValueInstKind::Div { lhs, rhs },
+            ty
+        });
+        let id = self.append_inst(block, inst);
+        ValueId::Inst(id)
+    }
+
     pub fn emit_neg(&mut self, block: BlockId, value: ValueId, ty: TypeKind) -> ValueId {
         let id = self.append_inst(block, Inst::Value(ValueInst {
             kind: ValueInstKind::Neg { value },
@@ -539,6 +557,50 @@ fn lower_expr_to_vir(ctx: &mut LowerCtx<'_>, expr: &Expr, expected_ty: Option<&T
             }
 
             ctx.func.emit_sub(ctx.current_block, lhs_v, rhs_v, ty)
+        }
+
+        Expr::Mul(lhs, rhs) => {
+            let lhs_v = lower_expr_to_vir(ctx, lhs, expected_ty);
+
+            let ty = expected_ty
+                .cloned()
+                .unwrap_or_else(|| ctx.func.value_ty(lhs_v).clone());
+
+            let rhs_v = lower_expr_to_vir(ctx, rhs, Some(&ty));
+
+            let lhs_ty = ctx.func.value_ty(lhs_v).clone();
+            let rhs_ty = ctx.func.value_ty(rhs_v).clone();
+
+            if lhs_ty != ty || rhs_ty != ty {
+                panic!(
+                    "type mismatch in mul: lhs={:?}, rhs={:?}, expected={:?}",
+                    lhs_ty, rhs_ty, ty
+                );
+            }
+
+            ctx.func.emit_mul(ctx.current_block, lhs_v, rhs_v, ty)
+        }
+
+        Expr::Div(lhs, rhs) => {
+            let lhs_v = lower_expr_to_vir(ctx, lhs, expected_ty);
+
+            let ty = expected_ty
+                .cloned()
+                .unwrap_or_else(|| ctx.func.value_ty(lhs_v).clone());
+
+            let rhs_v = lower_expr_to_vir(ctx, rhs, Some(&ty));
+
+            let lhs_ty = ctx.func.value_ty(lhs_v).clone();
+            let rhs_ty = ctx.func.value_ty(rhs_v).clone();
+
+            if lhs_ty != ty || rhs_ty != ty {
+                panic!(
+                    "type mismatch in div: lhs={:?}, rhs={:?}, expected={:?}",
+                    lhs_ty, rhs_ty, ty
+                );
+            }
+
+            ctx.func.emit_div(ctx.current_block, lhs_v, rhs_v, ty)
         }
 
         Expr::Negate(inner) => {
